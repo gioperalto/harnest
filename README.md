@@ -79,7 +79,7 @@ If not pre-configured in `settings.json`, register manually:
 claude mcp add playwright -- npx -y @playwright/mcp@latest
 ```
 
-**Frontend Design Plugin** (used by jr-engineers)
+[**Frontend Design Plugin**](https://github.com/anthropics/claude-code/tree/main/plugins/frontend-design) (used by jr-engineers)
 
 Enable in Claude Code settings. Used by jr engineers for UI implementation guidance. This is a Claude Code plugin, not an MCP server.
 
