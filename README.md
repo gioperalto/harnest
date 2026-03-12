@@ -56,7 +56,7 @@ Provides the sr-engineer with Codex-powered code generation and analysis via MCP
 If not pre-configured in `settings.json`, register manually:
 
 ```bash
-claude mcp add codex -s user -- codex mcp-server
+claude mcp add codex -s project -- codex mcp-server
 ```
 
 **Mermaid MCP Server** (used by architect)
