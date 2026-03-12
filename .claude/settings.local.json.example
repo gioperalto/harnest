@@ -1,0 +1,19 @@
+{
+  "_comment": "Local overrides — copy this to settings.local.json and customize.",
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "mcpServers": {
+    "codex": {
+      "disabled": true,
+      "_comment": "Set disabled: true to turn off any MCP server you haven't installed."
+    },
+    "mermaid": {
+      "disabled": false
+    },
+    "playwright": {
+      "disabled": false
+    }
+  }
+}

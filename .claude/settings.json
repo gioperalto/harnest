@@ -1,0 +1,45 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm run *)",
+      "Bash(npx *)",
+      "Read",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(cat .env*)",
+      "Bash(cat secrets/*)",
+      "Read(.env*)",
+      "Read(secrets/*)",
+      "Edit(.env*)",
+      "Edit(secrets/*)",
+      "Write(.env*)",
+      "Write(secrets/*)"
+    ]
+  },
+  "mcpServers": {
+    "codex": {
+      "command": "codex",
+      "args": ["--mcp"],
+      "disabled": false,
+      "_comment": "Codex MCP - Used by sr-engineer for code generation. Disable if not installed."
+    },
+    "mermaid": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mermaid-mcp-server"],
+      "disabled": false,
+      "_comment": "Mermaid MCP - Used by architect for diagrams. Disable if not needed."
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/playwright-mcp-server"],
+      "disabled": false,
+      "_comment": "Playwright MCP - Used by test-engineer for browser testing. Disable if not needed."
+    }
+  }
+}

@@ -1,0 +1,98 @@
+# gmux - Composable Claude Code Agent Harness
+# Drop this config + .claude/ directory into any project to enable team-based development.
+#
+# All sections are configurable. Disable supplementary tools by setting enabled: false.
+# Modify agent roles, models, and counts to fit your project needs.
+
+team:
+  name: gmux
+  description: "Composable agent team for structured development workflows"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Agent Definitions
+# Each agent has a role, model, count, and description.
+# Models: opus | sonnet | haiku
+# The agent_file references .claude/agents/<name>.md
+# ──────────────────────────────────────────────────────────────────────────────
+agents:
+  architect:
+    model: opus
+    count: 1
+    agent_file: architect.md
+    description: >
+      Plans work, breaks down tasks, creates diagrams, asks clarifying questions.
+      Owns the task list and delegates to other agents.
+
+  sr_engineer:
+    model: codex
+    count: 1
+    agent_file: sr-engineer.md
+    description: >
+      Makes broad-stroke implementations, sets code style and conventions,
+      reviews code from jr engineers, approves or rejects pull requests.
+    supplementary_tool: codex  # Uses Codex MCP when available
+
+  jr_engineer:
+    model: sonnet
+    count: 2
+    agent_file: jr-engineer.md
+    description: >
+      Implements tasks in worktrees, follows sr engineer's style conventions,
+      commits and pushes work for review. Can use frontend-design plugin for UI work.
+    supplementary_tool: frontend_design  # Uses frontend-design plugin when available
+
+  test_engineer:
+    model: sonnet
+    count: 1
+    agent_file: test-engineer.md
+    description: >
+      Writes unit tests, runs integration tests, performs user-end testing
+      via Playwright. Validates completed work before it merges.
+    supplementary_tool: playwright  # Uses Playwright MCP when available
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Supplementary Tools (all optional)
+# Set enabled: false to disable any tool. The harness works without them.
+# ──────────────────────────────────────────────────────────────────────────────
+tools:
+  codex:
+    enabled: true
+    type: mcp
+    description: "Codex MCP - used by sr engineer for code generation and analysis"
+    server_name: codex
+
+  mermaid:
+    enabled: true
+    type: mcp
+    description: "Mermaid MCP Server - used by architect for diagram generation"
+    server_name: mermaid
+
+  playwright:
+    enabled: true
+    type: mcp
+    description: "Playwright MCP Server - used by test engineer for browser testing"
+    server_name: playwright
+
+  frontend_design:
+    enabled: true
+    type: plugin
+    description: "Frontend design plugin - used by jr engineers for UI implementation"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Workflow Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+workflow:
+  # Maximum review loop iterations before escalating to architect
+  max_review_cycles: 3
+
+  # Whether jr engineers should use worktrees (recommended)
+  use_worktrees: true
+
+  # Branch naming convention for jr engineer worktrees
+  branch_prefix: "gmux/"
+
+  # Whether to run tests automatically after sr engineer approval
+  auto_test_on_approval: true
+
+  # Whether to require test engineer sign-off before merge
+  require_test_approval: true
