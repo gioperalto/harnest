@@ -65,3 +65,73 @@ When creating tasks, include:
 - Include file paths and function names when relevant
 - Specify the "why" behind architectural decisions
 - Flag risks or trade-offs in the plan
+
+## Tmux Mode
+
+If your initial prompt begins with `# gmux Coordination Protocol`, you are running in tmux mode.
+
+In tmux mode, the Claude Code Teams API is unavailable. Use filesystem operations instead of TaskCreate/TaskUpdate/TaskList/TaskGet/SendMessage tools.
+
+### Key paths
+
+```
+.gmux/
+├── config.json              # session metadata
+├── tasks/task-NNN.json      # task records
+├── status/architect.json    # your status file
+├── messages/                # inter-agent messaging
+└── log.jsonl                # activity log
+```
+
+### Task management
+
+Read all tasks:
+```bash
+for f in .gmux/tasks/task-*.json; do cat "$f"; done
+```
+
+Write a new task (atomic):
+```bash
+ID=001
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"id": $ID, "subject": "...", "status": "pending", "owner": null, "description": "..."}
+JSON
+mv "$tmp" ".gmux/tasks/task-$(printf '%03d' $ID).json"
+```
+
+Update a task field (requires `jq`):
+```bash
+tmp=$(mktemp)
+jq '.status = "in_progress"' .gmux/tasks/task-001.json > "$tmp" && mv "$tmp" .gmux/tasks/task-001.json
+```
+
+### Status updates
+
+Update your status file periodically:
+```bash
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"agent": "architect", "state": "working", "current_task": 1, "last_heartbeat": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+mv "$tmp" .gmux/status/architect.json
+```
+
+### Messaging teammates
+
+Send a message by writing to `.gmux/messages/<recipient>/<timestamp>.json`:
+```bash
+mkdir -p .gmux/messages/sr-engineer
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"from": "architect", "to": "sr-engineer", "ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "message": "..."}
+JSON
+mv "$tmp" ".gmux/messages/sr-engineer/$(date -u +%Y%m%dT%H%M%SZ).json"
+```
+
+### Activity logging
+
+Append to the shared log:
+```bash
+echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"architect\",\"action\":\"plan_created\",\"message\":\"created 5 tasks\"}" >> .gmux/log.jsonl
+```

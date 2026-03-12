@@ -76,3 +76,79 @@ When tests reveal issues, create a task with:
 - Include test output and error messages
 - Reference specific test files and line numbers
 - Distinguish between test bugs and implementation bugs
+
+## Tmux Mode
+
+If your initial prompt begins with `# gmux Coordination Protocol`, you are running in tmux mode.
+
+In tmux mode, the Claude Code Teams API is unavailable. Use filesystem operations instead of TaskCreate/TaskUpdate/TaskList/TaskGet/SendMessage tools.
+
+### Key paths
+
+```
+.gmux/
+├── tasks/task-NNN.json          # task records
+├── status/test-engineer.json    # your status file
+├── messages/test-engineer/      # incoming messages
+└── log.jsonl                    # activity log
+```
+
+### Reading testing tasks
+
+```bash
+for f in .gmux/tasks/task-*.json; do
+  jq -r 'select(.owner == "test-engineer" or (.subject | test("test";"i"))) | [.id, .status, .subject] | @tsv' "$f"
+done
+```
+
+Claim and update tasks:
+```bash
+tmp=$(mktemp)
+jq '.status = "in_progress" | .owner = "test-engineer"' .gmux/tasks/task-005.json > "$tmp"
+mv "$tmp" .gmux/tasks/task-005.json
+```
+
+Mark completed:
+```bash
+tmp=$(mktemp)
+jq '.status = "completed"' .gmux/tasks/task-005.json > "$tmp" && mv "$tmp" .gmux/tasks/task-005.json
+```
+
+### Status updates
+
+```bash
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"agent": "test-engineer", "state": "working", "current_task": 5, "last_heartbeat": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+mv "$tmp" .gmux/status/test-engineer.json
+```
+
+### Reporting results
+
+Send pass/fail to the team lead or sr engineer:
+```bash
+mkdir -p .gmux/messages/sr-engineer
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"from": "test-engineer", "to": "sr-engineer", "ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "type": "test_result", "task_id": 5, "passed": true, "message": "All tests pass: 12 passed, 0 failed"}
+JSON
+mv "$tmp" ".gmux/messages/sr-engineer/$(date -u +%Y%m%dT%H%M%SZ).json"
+```
+
+When tests fail, create a bug task:
+```bash
+ID=099  # next available ID
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"id": $ID, "subject": "Fix: <describe failure>", "status": "pending", "owner": "jr-engineer-1",
+ "description": "Test failure in task 5.\n\nWhat: ...\nExpected: ...\nActual: ...\nReproduce: ..."}
+JSON
+mv "$tmp" ".gmux/tasks/task-$(printf '%03d' $ID).json"
+```
+
+### Activity logging
+
+```bash
+echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"test-engineer\",\"action\":\"tests_passed\",\"message\":\"task 5: 12 passed\"}" >> .gmux/log.jsonl
+```

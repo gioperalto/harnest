@@ -65,3 +65,87 @@ If you're blocked or confused:
 2. Check if there are related completed tasks you can reference
 3. Send a message to the sr engineer asking for clarification
 4. Do NOT guess at architectural decisions — ask
+
+## Tmux Mode
+
+If your initial prompt begins with `# gmux Coordination Protocol`, you are running in tmux mode.
+
+In tmux mode, the Claude Code Teams API is unavailable. Use filesystem operations instead of TaskCreate/TaskUpdate/TaskList/TaskGet/SendMessage tools.
+
+### Key paths
+
+```
+.gmux/
+├── tasks/task-NNN.json           # task records
+├── status/<your-name>.json       # your status file
+├── worktrees/<your-name>/        # your pre-created worktree
+├── messages/<your-name>/         # incoming messages
+└── log.jsonl                     # activity log
+```
+
+Your worktree is pre-created at `.gmux/worktrees/<agent-name>/` — work inside it. Your agent name comes from the initial prompt (e.g., `jr-engineer-1`).
+
+### Reading and claiming tasks
+
+List available tasks:
+```bash
+for f in .gmux/tasks/task-*.json; do
+  jq -r '[.id, .status, .owner // "—", .subject] | @tsv' "$f"
+done
+```
+
+Claim a task (use your agent name, e.g. `jr-engineer-1`):
+```bash
+tmp=$(mktemp)
+jq '.status = "in_progress" | .owner = "jr-engineer-1"' .gmux/tasks/task-004.json > "$tmp"
+mv "$tmp" .gmux/tasks/task-004.json
+```
+
+Mark completed:
+```bash
+tmp=$(mktemp)
+jq '.status = "completed"' .gmux/tasks/task-004.json > "$tmp" && mv "$tmp" .gmux/tasks/task-004.json
+```
+
+### Status updates
+
+Update periodically while working:
+```bash
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"agent": "jr-engineer-1", "state": "working", "current_task": 4, "last_heartbeat": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+mv "$tmp" .gmux/status/jr-engineer-1.json
+```
+
+Set idle when done:
+```bash
+tmp=$(mktemp)
+jq '.state = "idle" | .current_task = null | .last_heartbeat = "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"' \
+  .gmux/status/jr-engineer-1.json > "$tmp" && mv "$tmp" .gmux/status/jr-engineer-1.json
+```
+
+### Notifying sr engineer for review
+
+```bash
+mkdir -p .gmux/messages/sr-engineer
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"from": "jr-engineer-1", "to": "sr-engineer", "ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "type": "review_request", "task_id": 4, "branch": "gmux/4-short-description", "message": "Task 4 ready for review"}
+JSON
+mv "$tmp" ".gmux/messages/sr-engineer/$(date -u +%Y%m%dT%H%M%SZ).json"
+```
+
+### Reading review feedback
+
+```bash
+for f in .gmux/messages/jr-engineer-1/*.json 2>/dev/null; do
+  [[ -f "$f" ]] && cat "$f"
+done
+```
+
+### Activity logging
+
+```bash
+echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"jr-engineer-1\",\"action\":\"task_started\",\"message\":\"starting task 4\"}" >> .gmux/log.jsonl
+```

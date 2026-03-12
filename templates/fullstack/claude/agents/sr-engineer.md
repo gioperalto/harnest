@@ -63,3 +63,77 @@ Read `gmux.yaml` at the project root to load workflow settings. Pay attention to
 - Reference line numbers and file paths
 - Provide examples of the correct approach when rejecting code
 - Acknowledge good work when approving
+
+## Tmux Mode
+
+If your initial prompt begins with `# gmux Coordination Protocol`, you are running in tmux mode.
+
+In tmux mode, the Claude Code Teams API is unavailable. Use filesystem operations instead of TaskCreate/TaskUpdate/TaskList/TaskGet/SendMessage tools.
+
+### Key paths
+
+```
+.gmux/
+├── tasks/task-NNN.json      # task records (read/update these)
+├── status/sr-engineer.json  # your status file
+├── messages/sr-engineer/    # incoming messages for you
+└── log.jsonl                # activity log
+```
+
+### Reading and updating tasks
+
+List pending tasks:
+```bash
+for f in .gmux/tasks/task-*.json; do
+  jq -r '[.id, .status, .owner // "—", .subject] | @tsv' "$f"
+done
+```
+
+Claim a task and mark in_progress (atomic with `jq`):
+```bash
+tmp=$(mktemp)
+jq '.status = "in_progress" | .owner = "sr-engineer"' .gmux/tasks/task-001.json > "$tmp"
+mv "$tmp" .gmux/tasks/task-001.json
+```
+
+Mark completed:
+```bash
+tmp=$(mktemp)
+jq '.status = "completed"' .gmux/tasks/task-001.json > "$tmp" && mv "$tmp" .gmux/tasks/task-001.json
+```
+
+### Status updates
+
+```bash
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"agent": "sr-engineer", "state": "reviewing", "current_task": 3, "last_heartbeat": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
+JSON
+mv "$tmp" .gmux/status/sr-engineer.json
+```
+
+### Review feedback (messaging)
+
+Send review feedback to a jr engineer:
+```bash
+mkdir -p .gmux/messages/jr-engineer-1
+tmp=$(mktemp)
+cat > "$tmp" <<JSON
+{"from": "sr-engineer", "to": "jr-engineer-1", "ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "type": "review", "approved": false, "message": "..."}
+JSON
+mv "$tmp" ".gmux/messages/jr-engineer-1/$(date -u +%Y%m%dT%H%M%SZ).json"
+```
+
+### Reading incoming messages
+
+```bash
+for f in .gmux/messages/sr-engineer/*.json 2>/dev/null; do
+  [[ -f "$f" ]] && cat "$f"
+done
+```
+
+### Activity logging
+
+```bash
+echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"sr-engineer\",\"action\":\"review_approved\",\"message\":\"task 3 approved\"}" >> .gmux/log.jsonl
+```
