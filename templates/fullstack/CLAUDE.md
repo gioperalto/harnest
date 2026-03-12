@@ -11,7 +11,7 @@ All team settings live in `gmux.yaml` at the project root. Read it at the start 
 | Role           | Model  | Count | Purpose                                       |
 |----------------|--------|-------|-----------------------------------------------|
 | Architect      | opus   | 1     | Plans, decomposes tasks, coordinates the team  |
-| Sr Engineer    | codex  | 1     | Broad-stroke code, conventions, code review    |
+| Sr Engineer    | sonnet | 1     | Broad-stroke code, conventions, code review    |
 | Jr Engineer    | sonnet | 2     | Implements tasks in isolated worktrees          |
 | Test Engineer  | sonnet | 1     | Unit tests, integration tests, Playwright tests |
 
@@ -68,6 +68,14 @@ Jr engineers use the prefix from `workflow.branch_prefix` (default: `gmux/`):
 ```
 gmux/<task-id>-<short-description>
 ```
+
+## Tmux Mode
+
+gmux also supports a **tmux split-pane mode** where each agent runs as a separate `claude` CLI process in its own tmux pane. Use `gmux start "<task>"` to launch and `gmux stop` to tear down.
+
+In tmux mode, agents coordinate through the `.gmux/` filesystem directory instead of built-in Claude Code team tools. Each agent's prompt includes a coordination protocol that explains how to read/write task files, send messages, and update status through the filesystem. The layout includes a monitor pane with a live dashboard.
+
+This is an alternative to the built-in Agent teams workflow above — use whichever fits your needs.
 
 ## Important Notes
 

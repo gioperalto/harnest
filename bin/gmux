@@ -16,6 +16,11 @@ if [ -d "$SCRIPT_DIR/../share/gmux/templates" ]; then
 else
   SHARE_DIR="$SCRIPT_DIR/.."
 fi
+if [ -d "$SCRIPT_DIR/../share/gmux/lib" ]; then
+  LIB_DIR="$SCRIPT_DIR/../share/gmux/lib"
+else
+  LIB_DIR="$SCRIPT_DIR/../lib"
+fi
 VERSION_FILE="$SCRIPT_DIR/../VERSION"
 
 # Global config
@@ -38,6 +43,8 @@ gmux $VERSION — Composable Claude Code agent team harness
 
 Usage:
   gmux init [--template <name>] [--force]   Scaffold a template into the current project
+  gmux start [--template <name>] [task...]  Launch agents in tmux split panes
+  gmux stop                                 Stop tmux session and clean up
   gmux templates                            List available templates
   gmux --template <name>                    Set the global default template
   gmux help                                 Show this help message
@@ -301,10 +308,327 @@ cmd_init() {
   echo "  2. Run 'claude' to start a gmux session"
 }
 
+# ── Start command (tmux split-pane mode) ────────────────────────────────────
+
+cmd_start() {
+  local template=""
+  local task_desc=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --template)
+        if [ $# -lt 2 ]; then
+          echo "Error: --template requires a value" >&2
+          exit 1
+        fi
+        template="$2"; shift 2 ;;
+      *)
+        # Everything else is the task description
+        task_desc="$*"
+        break ;;
+    esac
+  done
+
+  # ── Validate prerequisites ──────────────────────────────────────────────
+  if ! command -v tmux &>/dev/null; then
+    echo "Error: tmux is required for 'gmux start'. Install it with: brew install tmux" >&2
+    exit 1
+  fi
+  if ! command -v claude &>/dev/null; then
+    echo "Error: claude CLI is required. Install it with: brew install claude-code" >&2
+    exit 1
+  fi
+  if [ ! -f "gmux.yaml" ]; then
+    echo "Error: gmux.yaml not found. Run 'gmux init' first." >&2
+    exit 1
+  fi
+  if [ -z "$task_desc" ]; then
+    echo "Error: Task description is required." >&2
+    echo "Usage: gmux start [--template <name>] <task description...>" >&2
+    exit 1
+  fi
+
+  # ── Parse gmux.yaml ────────────────────────────────────────────────────
+  local config_json
+  config_json="$(python3 "$LIB_DIR/gmux-parse-yaml.py" gmux.yaml)"
+
+  local session_name
+  session_name="$(echo "$config_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tmux',{}).get('session_name','gmux'))")"
+
+  local refresh_interval
+  refresh_interval="$(echo "$config_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('tmux',{}).get('monitor',{}).get('refresh_interval',2))")"
+
+  local branch_prefix
+  branch_prefix="$(echo "$config_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('workflow',{}).get('branch_prefix','gmux/'))")"
+
+  # Extract layout as flat list of pane names
+  local layout_json
+  layout_json="$(echo "$config_json" | python3 -c "import json,sys; d=json.load(sys.stdin); print(json.dumps(d.get('tmux',{}).get('layout',[])))")"
+
+  local num_rows
+  num_rows="$(echo "$layout_json" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")"
+
+  # Check for existing session
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    echo "Error: tmux session '$session_name' already exists. Run 'gmux stop' first." >&2
+    exit 1
+  fi
+
+  # ── Resolve agent files ────────────────────────────────────────────────
+  local agents_dir=".claude/agents"
+  if [ ! -d "$agents_dir" ]; then
+    # Fallback: try to find via template
+    if [ -z "$template" ]; then
+      template="$(get_default_template)"
+    fi
+    local tdir
+    tdir="$(resolve_template_dir "$template")"
+    agents_dir="$tdir/claude/agents"
+  fi
+
+  echo "Starting gmux tmux session ($session_name)..."
+  echo ""
+
+  # ── Create .gmux/ directory structure ──────────────────────────────────
+  rm -rf .gmux
+  mkdir -p .gmux/{tasks,messages,status,worktrees,prompts}
+  touch .gmux/log.jsonl
+
+  # Write config.json
+  local started_at
+  started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  python3 -c "
+import json
+config = {
+    'session_name': '$session_name',
+    'started_at': '$started_at',
+    'task': $(python3 -c "import json; print(json.dumps('$task_desc'))"),
+    'agents': ['architect', 'sr-engineer', 'jr-engineer-1', 'jr-engineer-2', 'test-engineer']
+}
+with open('.gmux/config.json', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+  info ".gmux/ directory created"
+
+  # ── Create git worktrees for jr engineers ──────────────────────────────
+  local current_branch
+  current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")"
+
+  for jr in jr-engineer-1 jr-engineer-2; do
+    local wt_branch="${branch_prefix}${jr}-workspace"
+    if git worktree list 2>/dev/null | grep -q ".gmux/worktrees/$jr"; then
+      git worktree remove --force ".gmux/worktrees/$jr" 2>/dev/null || true
+    fi
+    git branch -D "$wt_branch" 2>/dev/null || true
+    git worktree add -b "$wt_branch" ".gmux/worktrees/$jr" HEAD 2>/dev/null
+    info "Worktree: .gmux/worktrees/$jr ($wt_branch)"
+  done
+
+  # ── Generate agent prompts ─────────────────────────────────────────────
+  local protocol
+  protocol="$(cat "$LIB_DIR/gmux-tmux-protocol.md")"
+
+  local agents=("architect" "sr-engineer" "jr-engineer-1" "jr-engineer-2" "test-engineer")
+  local agent_files=("architect.md" "sr-engineer.md" "jr-engineer.md" "jr-engineer.md" "test-engineer.md")
+
+  for idx in "${!agents[@]}"; do
+    local agent="${agents[$idx]}"
+    local agent_file="${agent_files[$idx]}"
+    local prompt_file=".gmux/prompts/${agent}.txt"
+    local agent_md_path="${agents_dir}/${agent_file}"
+
+    {
+      echo "$protocol"
+      echo ""
+      echo "---"
+      echo ""
+      echo "# Your Identity"
+      echo ""
+      echo "You are **${agent}** in this gmux tmux session."
+      echo ""
+      if [ -f "$agent_md_path" ]; then
+        # Strip frontmatter from agent .md
+        sed '1{/^---$/!q;};1,/^---$/d' "$agent_md_path"
+      fi
+      echo ""
+      echo "---"
+      echo ""
+      echo "# Task"
+      echo ""
+      echo "$task_desc"
+    } > "$prompt_file"
+    info "Prompt: .gmux/prompts/${agent}.txt"
+  done
+
+  # ── Log session start ──────────────────────────────────────────────────
+  echo "{\"ts\":\"$started_at\",\"agent\":\"system\",\"action\":\"session_started\",\"message\":\"gmux tmux session started: $task_desc\"}" >> .gmux/log.jsonl
+
+  # ── Create tmux session with panes ─────────────────────────────────────
+  echo ""
+
+  # Build the tmux layout from config
+  # Layout is an array of rows, each row is an array of pane names
+  # We create the session, then split panes accordingly
+
+  # Create session with the first pane
+  tmux new-session -d -s "$session_name" -x 200 -y 50
+
+  # We need to create the right number of panes
+  # Layout: [[a,b],[c,d],[e,f]] = 3 rows, 2 cols each
+  # Strategy: split horizontally for rows, then vertically within each row
+
+  # First, create all rows by splitting horizontally
+  local row
+  for ((row=1; row<num_rows; row++)); do
+    tmux split-window -t "$session_name" -v
+  done
+
+  # Even out the horizontal splits
+  tmux select-layout -t "$session_name" even-vertical
+
+  # Now split each row into columns
+  local pane_index=0
+  local pane_names=()
+  for ((row=0; row<num_rows; row++)); do
+    local num_cols
+    num_cols="$(echo "$layout_json" | python3 -c "import json,sys; print(len(json.load(sys.stdin)[$row]))")"
+
+    # Select the first pane of this row
+    tmux select-pane -t "$session_name:0.${pane_index}"
+
+    # Get pane names for this row
+    for ((col=0; col<num_cols; col++)); do
+      local pname
+      pname="$(echo "$layout_json" | python3 -c "import json,sys; print(json.load(sys.stdin)[$row][$col])")"
+      pane_names+=("$pname")
+
+      if [ "$col" -gt 0 ]; then
+        tmux split-window -t "$session_name" -h
+      fi
+    done
+
+    pane_index=$((pane_index + num_cols))
+  done
+
+  # Even out the layout
+  tmux select-layout -t "$session_name" tiled
+
+  # ── Launch commands in each pane ───────────────────────────────────────
+  local pane_idx=0
+  for pname in "${pane_names[@]}"; do
+    if [ "$pname" = "monitor" ]; then
+      tmux send-keys -t "$session_name:0.${pane_idx}" \
+        "watch -n ${refresh_interval} -c 'bash \"$LIB_DIR/gmux-monitor.sh\"'" C-m
+      info "Pane $pane_idx: monitor (watch)"
+    else
+      local prompt_file=".gmux/prompts/${pname}.txt"
+      if [ -f "$prompt_file" ]; then
+        # Use --print to run claude in non-interactive print mode with the prompt
+        tmux send-keys -t "$session_name:0.${pane_idx}" \
+          "claude -p \"\$(cat '$prompt_file')\"" C-m
+        info "Pane $pane_idx: $pname (claude)"
+      else
+        warn "Pane $pane_idx: $pname (no prompt file found)"
+      fi
+    fi
+    pane_idx=$((pane_idx + 1))
+  done
+
+  echo ""
+  info "Tmux session '$session_name' created with ${#pane_names[@]} panes"
+  echo ""
+  echo "Attaching to tmux session..."
+  echo "  Detach: Ctrl-b d"
+  echo "  Stop:   gmux stop"
+  echo ""
+
+  # Attach to session
+  tmux attach-session -t "$session_name"
+}
+
+# ── Stop command ─────────────────────────────────────────────────────────────
+
+cmd_stop() {
+  # Determine session name from .gmux/config.json or default
+  local session_name="gmux"
+  if [ -f ".gmux/config.json" ]; then
+    session_name="$(python3 -c "import json; print(json.load(open('.gmux/config.json')).get('session_name','gmux'))" 2>/dev/null || echo "gmux")"
+  fi
+
+  # Kill tmux session
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    tmux kill-session -t "$session_name"
+    info "Killed tmux session '$session_name'"
+  else
+    warn "No tmux session '$session_name' found"
+  fi
+
+  # Remove git worktrees
+  if [ -d ".gmux/worktrees" ]; then
+    for wt in .gmux/worktrees/*/; do
+      [ -d "$wt" ] || continue
+      local wt_name
+      wt_name="$(basename "$wt")"
+      git worktree remove --force "$wt" 2>/dev/null || true
+      # Clean up the branch
+      local branch_prefix
+      branch_prefix="$(python3 -c "
+import json,sys
+try:
+    d = json.load(open('.gmux/config.json'))
+except: pass
+" 2>/dev/null || echo "gmux/")"
+      info "Removed worktree: $wt_name"
+    done
+  fi
+
+  # Print task summary
+  if [ -d ".gmux/tasks" ]; then
+    echo ""
+    echo "Task Summary:"
+    local completed=0 in_progress=0 pending=0
+    for f in .gmux/tasks/task-*.json; do
+      [ -f "$f" ] || continue
+      local status
+      status="$(python3 -c "import json; print(json.load(open('$f')).get('status','unknown'))" 2>/dev/null || echo "unknown")"
+      case "$status" in
+        completed)   completed=$((completed + 1)) ;;
+        in_progress) in_progress=$((in_progress + 1)) ;;
+        pending)     pending=$((pending + 1)) ;;
+      esac
+    done
+    printf '  \033[32m✓\033[0m Completed:   %d\n' "$completed"
+    printf '  \033[33m⟳\033[0m In Progress: %d\n' "$in_progress"
+    printf '  \033[90m○\033[0m Pending:     %d\n' "$pending"
+  fi
+
+  # Log session end
+  if [ -f ".gmux/log.jsonl" ]; then
+    echo "{\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"agent\":\"system\",\"action\":\"session_stopped\",\"message\":\"gmux tmux session stopped\"}" >> .gmux/log.jsonl
+  fi
+
+  # Archive option
+  echo ""
+  if [ -d ".gmux" ]; then
+    printf "Archive .gmux/ directory? [y/N] "
+    read -r answer
+    if [[ "$answer" =~ ^[Yy] ]]; then
+      local archive_name=".gmux-archive-$(date +%Y%m%d-%H%M%S)"
+      mv .gmux "$archive_name"
+      info "Archived to $archive_name"
+    else
+      rm -rf .gmux
+      info "Removed .gmux/"
+    fi
+  fi
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 case "${1:-help}" in
   init)       shift; cmd_init "$@" ;;
+  start)      shift; cmd_start "$@" ;;
+  stop)       cmd_stop ;;
   templates)  cmd_templates ;;
   --template)
     if [ $# -lt 2 ]; then

@@ -3,7 +3,7 @@ name: sr-engineer
 description: >
   Senior engineer who writes foundational code, sets conventions, and reviews
   all work before merge. Uses Codex for code generation and analysis.
-model: codex
+model: sonnet
 tools: Read, Write, Edit, Glob, Grep, Bash
 mcpServers:
   - codex

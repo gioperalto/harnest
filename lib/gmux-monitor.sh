@@ -22,12 +22,23 @@ LOG_FILE="$GMUX_DIR/log.jsonl"
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 jq_safe() {
+  local query="$1"
+  local file="$2"
   if command -v jq &>/dev/null; then
-    jq -r "$@" 2>/dev/null || echo ""
+    jq -r "$query" "$file" 2>/dev/null || echo ""
   else
-    # fallback: crude grep-based extraction for key:"value" patterns
-    local key="${2:-.}"
-    grep -o "\"${key#.}\":[^,}]*" "$1" 2>/dev/null | head -1 | sed 's/.*: *"\(.*\)"/\1/' || echo ""
+    # fallback: use python3 (ships on macOS)
+    python3 -c "
+import json,sys
+try:
+    d = json.load(open('$file'))
+    keys = '${query}'.lstrip('.').split('.')
+    for k in keys:
+        d = d[k]
+    print(d if d is not None else '')
+except:
+    print('')
+" 2>/dev/null || echo ""
   fi
 }
 

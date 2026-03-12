@@ -58,6 +58,34 @@ templates/<template-name>/
 - Test your template by running `gmux init --template <name>` in a fresh directory.
 - Document all supplementary tools and how to disable them.
 
+## Project Structure
+
+```
+bin/gmux          CLI entrypoint (bash)
+lib/              Shared libraries and assets
+  gmux-parse-yaml.py       YAML → JSON parser (python3)
+  gmux-tmux-protocol.md    Coordination protocol for tmux mode agents
+  gmux-monitor.sh          Dashboard script for tmux monitor pane
+templates/        Template directories scaffolded by `gmux init`
+```
+
+### Tmux Mode Development
+
+The `gmux start` / `gmux stop` commands implement tmux split-pane mode. Key files:
+
+- **`bin/gmux`** — `cmd_start` and `cmd_stop` functions handle session lifecycle
+- **`lib/gmux-parse-yaml.py`** — Parses `gmux.yaml` to JSON; uses PyYAML if available, fallback parser otherwise
+- **`lib/gmux-tmux-protocol.md`** — Coordination protocol prepended to each agent's prompt
+- **`lib/gmux-monitor.sh`** — Dashboard for the monitor pane; uses `jq` if available, `python3` fallback
+
+To test tmux mode locally:
+```bash
+# From a clone of the repo
+./bin/gmux start "your test task"
+# In another terminal
+./bin/gmux stop
+```
+
 ## Code Style
 
 - Shell scripts use `bash` with `set -euo pipefail`.

@@ -70,6 +70,33 @@ gmux init --template fullstack
 
 The global default is stored in `~/.config/gmux/config` and used by `gmux init` when no `--template` flag is given.
 
+## Tmux Split-Pane Mode
+
+Run agents as separate `claude` processes in a tmux split-pane layout with a live dashboard:
+
+```bash
+gmux start "build a hello world API with tests"
+```
+
+This creates a tmux session with one pane per agent (architect, sr-engineer, jr-engineers, test-engineer) plus a monitor dashboard. Agents coordinate through a `.gmux/` directory using file-based task management and messaging.
+
+```
+┌───────────────────┬───────────────────┐
+│   architect       │   sr-engineer     │
+├───────────────────┼───────────────────┤
+│   jr-engineer-1   │   jr-engineer-2   │
+├───────────────────┴───┬───────────────┤
+│   test-engineer       │   monitor     │
+└───────────────────────┴───────────────┘
+```
+
+**Stop the session:**
+```bash
+gmux stop
+```
+
+Tmux mode requires `tmux` and `claude` CLI to be installed. The layout and monitor settings are configurable in `gmux.yaml` under the `tmux:` section.
+
 ## Available Templates
 
 | Template | Description |

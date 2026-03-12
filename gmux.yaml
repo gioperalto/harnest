@@ -24,7 +24,7 @@ agents:
       Owns the task list and delegates to other agents.
 
   sr_engineer:
-    model: codex
+    model: sonnet
     count: 1
     agent_file: sr-engineer.md
     description: >
@@ -96,3 +96,17 @@ workflow:
 
   # Whether to require test engineer sign-off before merge
   require_test_approval: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Tmux Split-Pane Mode
+# Used by `gmux start` to run agents as separate claude processes in tmux panes.
+# ──────────────────────────────────────────────────────────────────────────────
+tmux:
+  session_name: gmux
+  layout:
+    - [architect, sr-engineer]
+    - [jr-engineer-1, jr-engineer-2]
+    - [test-engineer, monitor]
+  monitor:
+    refresh_interval: 2
+    show: [tasks, git, agents]

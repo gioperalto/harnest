@@ -7,7 +7,7 @@ A structured multi-agent team for full-stack development. An architect plans, a 
 | Agent | Model | Count | Description |
 |-------|-------|-------|-------------|
 | `architect` | opus | 1 | Plans and coordinates. Read-only tools + diagram generation. Runs in plan mode. |
-| `sr-engineer` | codex | 1 | Writes foundational code and reviews all work. Full tool access + Codex MCP. |
+| `sr-engineer` | sonnet | 1 | Writes foundational code and reviews all work. Full tool access + Codex MCP. |
 | `jr-engineer` | sonnet | 2 | Implements assigned tasks in worktree isolation. Full tool access. |
 | `test-engineer` | sonnet | 1 | Writes and runs tests. Full tool access + Playwright MCP. |
 
@@ -47,7 +47,7 @@ All team configuration lives in `gmux.yaml`:
 ```yaml
 agents:
   sr_engineer:
-    model: codex      # Change to opus, sonnet, or haiku
+    model: sonnet     # Change to opus, sonnet, or haiku
     count: 1
     agent_file: sr-engineer.md
 
@@ -58,6 +58,53 @@ workflow:
   auto_test_on_approval: true   # Auto-run tests after sr engineer approval
   require_test_approval: true   # Require test engineer sign-off to merge
 ```
+
+## Tmux Split-Pane Mode
+
+In addition to the built-in Agent teams workflow, this template supports running agents as separate `claude` processes in tmux split panes.
+
+**Start a session:**
+```bash
+gmux start "build a user authentication system"
+```
+
+This creates a tmux session with the following layout:
+
+```
+┌───────────────────┬───────────────────┐
+│   architect       │   sr-engineer     │
+├───────────────────┼───────────────────┤
+│   jr-engineer-1   │   jr-engineer-2   │
+├───────────────────┴───┬───────────────┤
+│   test-engineer       │   monitor     │
+└───────────────────────┴───────────────┘
+```
+
+Each agent pane runs a separate `claude -p` process with an auto-generated prompt that includes the coordination protocol and agent instructions. The **monitor** pane displays a live dashboard showing task status, agent state, recent git commits, and activity logs.
+
+**Coordination:** Agents coordinate through the `.gmux/` directory using JSON files for tasks, messages, and status updates — no built-in Claude Code team tools required.
+
+**Stop a session:**
+```bash
+gmux stop
+```
+
+This kills the tmux session, removes git worktrees, prints a task summary, and optionally archives the `.gmux/` directory.
+
+**Configure the layout** in `gmux.yaml`:
+```yaml
+tmux:
+  session_name: gmux
+  layout:
+    - [architect, sr-engineer]
+    - [jr-engineer-1, jr-engineer-2]
+    - [test-engineer, monitor]
+  monitor:
+    refresh_interval: 2
+    show: [tasks, git, agents]
+```
+
+**Requirements:** `tmux` and `claude` CLI must be installed.
 
 ## Supplementary Tools
 
@@ -114,4 +161,4 @@ Create `.claude/settings.local.json` to override settings without modifying the 
 - **Experimental feature**: Agent teams require `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. This is an experimental Claude Code feature and may change.
 - **MCP server scoping**: MCP servers are defined globally in `settings.json`. Agent frontmatter `mcpServers` fields document intent but all agents can technically access all MCP servers.
 - **Session persistence**: Teams exist only within a single Claude Code session. They are not persisted across sessions.
-- **Codex dependency**: The sr-engineer role uses Codex as its primary model, which requires a separate OpenAI API key and the Codex CLI installed.
+- **Codex dependency**: The sr-engineer role uses the Codex MCP server for code generation and analysis, which requires a separate OpenAI API key and the Codex CLI installed.
