@@ -10,8 +10,17 @@ while [ -L "$SCRIPT_PATH" ]; do
 done
 SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
 
-SHARE_DIR="$SCRIPT_DIR/../share/gmux"
+# Homebrew layout: share/gmux/templates/...  Local dev: templates/...
+if [ -d "$SCRIPT_DIR/../share/gmux/templates" ]; then
+  SHARE_DIR="$SCRIPT_DIR/../share/gmux"
+else
+  SHARE_DIR="$SCRIPT_DIR/.."
+fi
 VERSION_FILE="$SCRIPT_DIR/../VERSION"
+
+# Global config
+GMUX_CONFIG_DIR="$HOME/.config/gmux"
+GMUX_CONFIG="$GMUX_CONFIG_DIR/config"
 
 # Read version from VERSION file, fallback to "dev"
 if [ -f "$VERSION_FILE" ]; then
@@ -28,12 +37,15 @@ usage() {
 gmux $VERSION — Composable Claude Code agent team harness
 
 Usage:
-  gmux init [--force]    Scaffold gmux into the current project
-  gmux help              Show this help message
-  gmux version           Print version
+  gmux init [--template <name>] [--force]   Scaffold a template into the current project
+  gmux templates                            List available templates
+  gmux --template <name>                    Set the global default template
+  gmux help                                 Show this help message
+  gmux version                              Print version
 
 Options:
-  --force                Overwrite existing files during init
+  --template <name>   Template to use (default: fullstack)
+  --force             Overwrite existing files during init
 EOF
 }
 
@@ -42,7 +54,43 @@ skip()  { printf '  \033[33m⊘\033[0m %s (already exists, use --force to overwr
 warn()  { printf '  \033[33m!\033[0m %s\n' "$1"; }
 merge() { printf '  \033[36m⇄\033[0m %s\n' "$1"; }
 
-# Copy a file from share/gmux/ to a destination, respecting --force
+get_default_template() {
+  if [ -f "$GMUX_CONFIG" ]; then
+    local tmpl
+    tmpl="$(grep '^template=' "$GMUX_CONFIG" 2>/dev/null | cut -d= -f2)"
+    if [ -n "$tmpl" ]; then
+      echo "$tmpl"
+      return
+    fi
+  fi
+  echo "fullstack"
+}
+
+set_default_template() {
+  local name="$1"
+  local template_dir="$SHARE_DIR/templates/$name"
+  if [ ! -d "$template_dir" ]; then
+    echo "Error: Template '$name' not found." >&2
+    cmd_templates >&2
+    exit 1
+  fi
+  mkdir -p "$GMUX_CONFIG_DIR"
+  echo "template=$name" > "$GMUX_CONFIG"
+  info "Default template set to '$name' (saved to $GMUX_CONFIG)"
+}
+
+resolve_template_dir() {
+  local name="$1"
+  local template_dir="$SHARE_DIR/templates/$name"
+  if [ ! -d "$template_dir" ]; then
+    echo "Error: Template '$name' not found." >&2
+    cmd_templates >&2
+    exit 1
+  fi
+  echo "$template_dir"
+}
+
+# Copy a file from template dir to a destination, respecting --force
 copy_file() {
   local src="$1" dst="$2" force="$3"
   if [ -f "$dst" ] && [ "$force" != "true" ]; then
@@ -61,26 +109,27 @@ MARKER_BEGIN="<!-- gmux:begin -->"
 MARKER_END="<!-- gmux:end -->"
 
 claudemd_section() {
+  local template_dir="$1"
   # Extract content from template CLAUDE.md wrapped in markers
   printf '%s\n' "$MARKER_BEGIN"
-  cat "$SHARE_DIR/CLAUDE.md"
+  cat "$template_dir/CLAUDE.md"
   printf '\n%s\n' "$MARKER_END"
 }
 
 handle_claudemd() {
-  local force="$1"
+  local template_dir="$1" force="$2"
   if [ ! -f "CLAUDE.md" ]; then
     # No existing CLAUDE.md — write template with markers
-    claudemd_section > "CLAUDE.md"
+    claudemd_section "$template_dir" > "CLAUDE.md"
     info "CLAUDE.md (created)"
   elif [ "$force" = "true" ]; then
     # Force mode — replace gmux section or create fresh
     if grep -q "$MARKER_BEGIN" "CLAUDE.md" 2>/dev/null; then
-      replace_claudemd_section
+      replace_claudemd_section "$template_dir"
       info "CLAUDE.md (gmux section replaced)"
     else
       printf '\n' >> "CLAUDE.md"
-      claudemd_section >> "CLAUDE.md"
+      claudemd_section "$template_dir" >> "CLAUDE.md"
       info "CLAUDE.md (gmux section appended)"
     fi
   elif grep -q "$MARKER_BEGIN" "CLAUDE.md" 2>/dev/null; then
@@ -89,12 +138,13 @@ handle_claudemd() {
   else
     # Exists but no gmux section — append
     printf '\n' >> "CLAUDE.md"
-    claudemd_section >> "CLAUDE.md"
+    claudemd_section "$template_dir" >> "CLAUDE.md"
     info "CLAUDE.md (gmux section appended)"
   fi
 }
 
 replace_claudemd_section() {
+  local template_dir="$1"
   local tmp
   tmp="$(mktemp)"
   local in_section=false
@@ -103,7 +153,7 @@ replace_claudemd_section() {
     if [ "$line" = "$MARKER_BEGIN" ]; then
       in_section=true
       if [ "$replaced" = "false" ]; then
-        claudemd_section >> "$tmp"
+        claudemd_section "$template_dir" >> "$tmp"
         replaced=true
       fi
       continue
@@ -167,43 +217,83 @@ print(json.dumps(merged, indent=2))
   merge "Merged $dst"
 }
 
+# ── Templates command ────────────────────────────────────────────────────────
+
+cmd_templates() {
+  local templates_dir="$SHARE_DIR/templates"
+  if [ ! -d "$templates_dir" ]; then
+    echo "Error: Templates directory not found at $templates_dir" >&2
+    echo "Is gmux installed correctly?" >&2
+    exit 1
+  fi
+  local default_tmpl
+  default_tmpl="$(get_default_template)"
+  echo "Available templates:"
+  for dir in "$templates_dir"/*/; do
+    [ -d "$dir" ] || continue
+    local name
+    name="$(basename "$dir")"
+    if [ "$name" = "$default_tmpl" ]; then
+      echo "  $name (default)"
+    else
+      echo "  $name"
+    fi
+  done
+}
+
 # ── Init command ─────────────────────────────────────────────────────────────
 
 cmd_init() {
   local force=false
+  local template=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --force) force=true; shift ;;
+      --template)
+        if [ $# -lt 2 ]; then
+          echo "Error: --template requires a value"
+          exit 1
+        fi
+        template="$2"; shift 2 ;;
       *) echo "Unknown option: $1"; exit 1 ;;
     esac
   done
 
-  if [ ! -d "$SHARE_DIR" ]; then
-    echo "Error: Template directory not found at $SHARE_DIR"
-    echo "Is gmux installed correctly?"
-    exit 1
+  # Resolve template name
+  if [ -z "$template" ]; then
+    template="$(get_default_template)"
   fi
 
-  echo "Initializing gmux in $(pwd)..."
+  local template_dir
+  template_dir="$(resolve_template_dir "$template")"
+
+  echo "Initializing gmux ($template template) in $(pwd)..."
   echo ""
 
   # 1. gmux.yaml
-  copy_file "$SHARE_DIR/gmux.yaml" "./gmux.yaml" "$force" || true
+  copy_file "$template_dir/gmux.yaml" "./gmux.yaml" "$force" || true
 
   # 2. CLAUDE.md
-  handle_claudemd "$force"
+  handle_claudemd "$template_dir" "$force"
 
   # 3. Agent definitions
   mkdir -p ".claude/agents"
-  for agent in architect sr-engineer jr-engineer test-engineer; do
-    copy_file "$SHARE_DIR/claude/agents/$agent.md" ".claude/agents/$agent.md" "$force" || true
+  for agent in "$template_dir"/claude/agents/*.md; do
+    [ -f "$agent" ] || continue
+    local agent_name
+    agent_name="$(basename "$agent")"
+    copy_file "$agent" ".claude/agents/$agent_name" "$force" || true
   done
 
   # 4. settings.local.json.example
-  copy_file "$SHARE_DIR/claude/settings.local.json.example" ".claude/settings.local.json.example" "$force" || true
+  if [ -f "$template_dir/claude/settings.local.json.example" ]; then
+    copy_file "$template_dir/claude/settings.local.json.example" ".claude/settings.local.json.example" "$force" || true
+  fi
 
   # 5. settings.json (deep merge)
-  merge_settings "$SHARE_DIR/claude/settings.json" ".claude/settings.json" "$force"
+  if [ -f "$template_dir/claude/settings.json" ]; then
+    merge_settings "$template_dir/claude/settings.json" ".claude/settings.json" "$force"
+  fi
 
   echo ""
   echo "Done! Next steps:"
@@ -215,6 +305,13 @@ cmd_init() {
 
 case "${1:-help}" in
   init)       shift; cmd_init "$@" ;;
+  templates)  cmd_templates ;;
+  --template)
+    if [ $# -lt 2 ]; then
+      echo "Error: --template requires a value"
+      exit 1
+    fi
+    set_default_template "$2" ;;
   version|--version|-v)  echo "gmux $VERSION" ;;
   help|--help|-h)        usage ;;
   *)          echo "Unknown command: $1"; usage; exit 1 ;;

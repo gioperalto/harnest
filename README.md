@@ -1,17 +1,6 @@
 # gmux
 
-A composable agent team configuration for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Drop gmux into any project to enable structured, multi-agent development workflows.
-
-## Overview
-
-gmux provides a ready-made team of AI agents that collaborate on software tasks:
-
-- **Architect** — plans work, breaks down tasks, creates diagrams, coordinates the team
-- **Senior Engineer** — writes foundational code, sets conventions, reviews all work
-- **Junior Engineers** (x2) — implement tasks in isolated worktrees, submit for review
-- **Test Engineer** — writes and runs unit, integration, and browser tests
-
-The team follows a structured workflow: plan → implement → review → test → merge.
+A composable agent team configuration for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Drop gmux into any project to enable structured, multi-agent development workflows — powered by configurable templates.
 
 ## Prerequisites
 
@@ -35,54 +24,6 @@ You need an active Anthropic API key or Claude Pro/Team subscription. See [Claud
 
 Agent teams require the experimental teams feature. `gmux init` configures this automatically in `.claude/settings.json`.
 
-### Optional Supplementary Tools
-
-All supplementary tools are optional. gmux works without them, but they enhance specific agent capabilities. Disable any tool by setting `enabled: false` in `gmux.yaml` and `"disabled": true` in `.claude/settings.json`.
-
-> **Note:** gmux ships with MCP servers pre-configured in `.claude/settings.json`. The instructions below are for installing the underlying tools that those servers depend on. If you'd rather register MCP servers yourself (or add them to a different scope), use `claude mcp add`.
-
-**Codex CLI** (used by sr-engineer)
-
-```bash
-# Homebrew
-brew install codex
-
-# npm
-npm install -g @openai/codex
-```
-
-Provides the sr-engineer with Codex-powered code generation and analysis via MCP. Requires an OpenAI API key.
-
-If not pre-configured in `settings.json`, register manually:
-
-```bash
-claude mcp add codex -s project -- codex mcp-server
-```
-
-**Mermaid MCP Server** (used by architect)
-
-Enables the architect to generate architecture diagrams, flowcharts, and sequence diagrams.
-
-If not pre-configured in `settings.json`, register manually:
-
-```bash
-claude mcp add mermaid -- npx -y @anthropic/mermaid-mcp-server
-```
-
-**Playwright MCP Server** (used by test-engineer)
-
-Enables the test engineer to write and run browser-based end-to-end tests. See the [Playwright MCP documentation](https://github.com/microsoft/playwright-mcp) for full setup options.
-
-If not pre-configured in `settings.json`, register manually:
-
-```bash
-claude mcp add playwright -- npx -y @playwright/mcp@latest
-```
-
-[**Frontend Design Plugin**](https://github.com/anthropics/claude-code/tree/main/plugins/frontend-design) (used by jr-engineers)
-
-Enable in Claude Code settings. Used by jr engineers for UI implementation guidance. This is a Claude Code plugin, not an MCP server.
-
 ## Quick Start
 
 1. **Install gmux:**
@@ -99,106 +40,47 @@ Enable in Claude Code settings. Used by jr engineers for UI implementation guida
    cd your-project
    gmux init
    ```
-   This copies `gmux.yaml`, agent definitions, and merges Claude Code settings automatically.
+   This scaffolds the default template (`fullstack`) into your project — copying `gmux.yaml`, agent definitions, and merging Claude Code settings.
 
-3. **Customize** `gmux.yaml` (optional) — adjust models, agent counts, tools, workflow settings.
-
-4. **Start Claude Code:**
+3. **Start Claude Code:**
    ```bash
    claude
    ```
 
-5. **Give it a task.** Claude reads the config on startup and bootstraps a gmux team.
+4. **Give it a task.** Claude reads the config on startup and bootstraps a gmux team.
 
-## Configuration
+## Templates
 
-All team configuration lives in `gmux.yaml`:
+gmux ships with pre-built team configurations called templates. Each template defines a set of agent roles, workflow rules, and supplementary tools tailored for a specific development style.
 
-```yaml
-agents:
-  sr_engineer:
-    model: codex      # Change to opus, sonnet, or haiku
-    count: 1
-    agent_file: sr-engineer.md
-
-workflow:
-  max_review_cycles: 3          # Reviews before escalating to architect
-  use_worktrees: true           # Jr engineers work in isolated worktrees
-  branch_prefix: "gmux/"        # Branch naming: gmux/<task-id>-<desc>
-  auto_test_on_approval: true   # Auto-run tests after sr engineer approval
-  require_test_approval: true   # Require test engineer sign-off to merge
+**Set a global default template:**
+```bash
+gmux --template fullstack
 ```
 
-## Agent Roles
-
-| Agent | Model | Description |
-|-------|-------|-------------|
-| `architect` | opus | Plans and coordinates. Read-only tools + diagram generation. Runs in plan mode. |
-| `sr-engineer` | codex | Writes foundational code and reviews all work. Full tool access + Codex MCP. |
-| `jr-engineer` | sonnet | Implements assigned tasks in worktree isolation. Full tool access. |
-| `test-engineer` | sonnet | Writes and runs tests. Full tool access + Playwright MCP. |
-
-## Workflow
-
-```
-User Request
-    │
-    ▼
-Architect (plan + task list)
-    │
-    ├──► Sr Engineer (broad strokes, conventions)
-    │        │
-    │        ▼
-    ├──► Jr Engineer 1 ──► Sr Review ──┐
-    ├──► Jr Engineer 2 ──► Sr Review ──┤
-    │                                  │
-    │    ┌─────────────────────────────┘
-    │    ▼
-    └──► Test Engineer (validate)
-              │
-              ▼
-         Complete / Bug Report
+**List available templates:**
+```bash
+gmux templates
 ```
 
-1. **Plan** — Architect analyzes the request, creates subtasks with dependencies
-2. **Scaffold** — Sr engineer writes foundational code and sets conventions
-3. **Implement** — Jr engineers work in parallel on assigned tasks in isolated worktrees
-4. **Review** — Sr engineer reviews jr engineer work (approve/reject cycle, max 3 rounds)
-5. **Test** — Test engineer validates approved work with unit, integration, and browser tests
-6. **Merge** — Approved and tested work is merged
+**Initialize with a specific template (one-time override):**
+```bash
+gmux init --template fullstack
+```
 
-## Local Overrides
+The global default is stored in `~/.config/gmux/config` and used by `gmux init` when no `--template` flag is given.
 
-Create `.claude/settings.local.json` to override settings without modifying the tracked `settings.json`. See `.claude/settings.local.json.example` for a template.
+## Available Templates
 
-This file is gitignored and will not be committed.
+| Template | Description |
+|----------|-------------|
+| [`fullstack`](templates/fullstack/) | Architect + Sr Engineer + Jr Engineers + Test Engineer. Plan → implement → review → test workflow. |
 
-## Disabling Tools
+See the [templates/](templates/) directory for full documentation on each template.
 
-To disable a supplementary tool:
+## Contributing
 
-1. In `gmux.yaml`, set `enabled: false`:
-   ```yaml
-   tools:
-     codex:
-       enabled: false
-   ```
-
-2. In `.claude/settings.json`, set `"disabled": true`:
-   ```json
-   "mcpServers": {
-     "codex": {
-       "disabled": true
-     }
-   }
-   ```
-
-## Limitations
-
-- **Experimental feature**: Agent teams require `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. This is an experimental Claude Code feature and may change.
-- **MCP server scoping**: MCP servers are defined globally in `settings.json`. Agent frontmatter `mcpServers` fields document intent but all agents can technically access all MCP servers.
-- **Session persistence**: Teams exist only within a single Claude Code session. They are not persisted across sessions.
-- **Codex dependency**: The sr-engineer role uses Codex as its primary model, which requires a separate OpenAI API key and the Codex CLI installed.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to gmux, including how to create new templates.
 
 ## License
 
