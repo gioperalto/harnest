@@ -381,6 +381,34 @@ ${md_content}"
   local num_rows
   num_rows="$(echo "$layout_json" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")"
 
+  # Read use_worktrees setting from yaml
+  local use_worktrees
+  use_worktrees="$(echo "$config_json" | python3 -c "import json,sys; d=json.load(sys.stdin); v=d.get('workflow',{}).get('use_worktrees',True); print('true' if v else 'false')")"
+
+  # Build agents and agent_files arrays dynamically from yaml config
+  local agents=()
+  local agent_files=()
+  while IFS=$'\t' read -r aname afile; do
+    agents+=("$aname")
+    agent_files+=("$afile")
+  done < <(echo "$config_json" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for role, cfg in d.get('agents', {}).items():
+    name = role.replace('_', '-')
+    count = cfg.get('count', 1)
+    afile = cfg.get('agent_file', name + '.md')
+    if count == 1:
+        print(name + '\t' + afile)
+    else:
+        for i in range(1, count + 1):
+            print(name + '-' + str(i) + '\t' + afile)
+")
+
+  # Build agents JSON list for config.json
+  local agents_json_list
+  agents_json_list="$(printf '%s\n' "${agents[@]}" | python3 -c "import json,sys; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")"
+
   # Check for existing session
   if tmux has-session -t "$session_name" 2>/dev/null; then
     echo "Error: tmux session '$session_name' already exists. Run 'harnest land' first." >&2
@@ -416,33 +444,42 @@ config = {
     'session_name': '$session_name',
     'started_at': '$started_at',
     'task': $(python3 -c "import json; print(json.dumps('$task_desc'))"),
-    'agents': ['architect', 'sr-engineer', 'jr-engineer-1', 'jr-engineer-2', 'test-engineer']
+    'agents': $agents_json_list
 }
 with open('.harnest/config.json', 'w') as f:
     json.dump(config, f, indent=2)
 "
   info ".harnest/ directory created"
 
-  # ── Create git worktrees for jr engineers ──────────────────────────────
+  # ── Create git worktrees for multi-instance agents (when use_worktrees: true) ─
   local current_branch
   current_branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")"
 
-  for jr in jr-engineer-1 jr-engineer-2; do
-    local wt_branch="${branch_prefix}${jr}-workspace"
-    if git worktree list 2>/dev/null | grep -q ".harnest/worktrees/$jr"; then
-      git worktree remove --force ".harnest/worktrees/$jr" 2>/dev/null || true
-    fi
-    git branch -D "$wt_branch" 2>/dev/null || true
-    git worktree add -b "$wt_branch" ".harnest/worktrees/$jr" HEAD 2>/dev/null
-    info "Worktree: .harnest/worktrees/$jr ($wt_branch)"
-  done
+  if [ "$use_worktrees" = "true" ]; then
+    while IFS= read -r wt_agent; do
+      [ -z "$wt_agent" ] && continue
+      local wt_branch="${branch_prefix}${wt_agent}-workspace"
+      if git worktree list 2>/dev/null | grep -q ".harnest/worktrees/$wt_agent"; then
+        git worktree remove --force ".harnest/worktrees/$wt_agent" 2>/dev/null || true
+      fi
+      git branch -D "$wt_branch" 2>/dev/null || true
+      git worktree add -b "$wt_branch" ".harnest/worktrees/$wt_agent" HEAD 2>/dev/null
+      info "Worktree: .harnest/worktrees/$wt_agent ($wt_branch)"
+    done < <(echo "$config_json" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+for role, cfg in d.get('agents', {}).items():
+    count = cfg.get('count', 1)
+    if count > 1:
+        name = role.replace('_', '-')
+        for i in range(1, count + 1):
+            print(name + '-' + str(i))
+")
+  fi
 
   # ── Generate agent prompts ─────────────────────────────────────────────
   local protocol
   protocol="$(cat "$LIB_DIR/harnest-tmux-protocol.md")"
-
-  local agents=("architect" "sr-engineer" "jr-engineer-1" "jr-engineer-2" "test-engineer")
-  local agent_files=("architect.md" "sr-engineer.md" "jr-engineer.md" "jr-engineer.md" "test-engineer.md")
 
   for idx in "${!agents[@]}"; do
     local agent="${agents[$idx]}"

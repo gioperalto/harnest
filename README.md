@@ -128,6 +128,7 @@ Tmux mode requires `tmux` and `claude` CLI to be installed. The layout and monit
 | Chick | Description |
 |-------|-------------|
 | [`fullstack`](nest/fullstack/) | Architect + Sr Engineer + Jr Engineers + Test Engineer. Plan → implement → review → test workflow. |
+| [`webpage`](nest/webpage/) | Strategist + Artist + Builder + UX Tester. Interview → generate assets → build → validate workflow for single-page React Vite TypeScript websites. |
 
 See the [nest/](nest/) directory for full documentation on each chick.
 

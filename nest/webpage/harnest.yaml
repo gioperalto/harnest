@@ -1,0 +1,119 @@
+# harnest - Single-Page Website Creation Chick
+# Drop this config + .claude/ directory into any project to launch a website creation team.
+#
+# The strategist interviews the customer first. Once they produce a brief, the artist
+# and builder work in parallel. The UX tester validates when the builder is done.
+
+team:
+  name: webpage
+  description: "Single-page website creation team: strategist, artist, builder, UX tester"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Agent Definitions
+# Each agent has a role, model, count, and description.
+# Models: opus | sonnet | haiku
+# The agent_file references .claude/agents/<name>.md
+# ──────────────────────────────────────────────────────────────────────────────
+agents:
+  strategist:
+    model: opus
+    count: 1
+    agent_file: strategist.md
+    description: >
+      Talks to the customer to understand their website vision, asks targeted
+      clarifying questions, and distills requirements into a brief for the team.
+
+  artist:
+    model: sonnet
+    count: 1
+    agent_file: artist.md
+    description: >
+      Generates visual assets using Nano Banana MCP. Favors carousel images,
+      card images, and background images. Places assets in the public/ directory.
+    supplementary_tool: nanobanana
+
+  builder:
+    model: sonnet
+    count: 1
+    agent_file: builder.md
+    description: >
+      Builds the single-page React Vite TypeScript website. Vanilla HTML/CSS/JS
+      style with no UI component libraries. Uses frontend-design plugin for guidance.
+    supplementary_tool: frontend_design
+
+  ux_tester:
+    model: sonnet
+    count: 1
+    agent_file: ux-tester.md
+    description: >
+      Simulates user interaction via Playwright, gives critical actionable feedback
+      to the builder, and verifies artist images are correctly integrated.
+    supplementary_tool: playwright
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Supplementary Tools (all optional)
+# Set enabled: false to disable any tool. The harness works without them.
+# ──────────────────────────────────────────────────────────────────────────────
+tools:
+  nanobanana:
+    enabled: true
+    type: mcp
+    description: "Nano Banana MCP - used by artist for AI image generation (Gemini-powered)"
+    server_name: nanobanana
+
+  playwright:
+    enabled: true
+    type: mcp
+    description: "Playwright MCP Server - used by UX tester for browser simulation and testing"
+    server_name: playwright
+
+  frontend_design:
+    enabled: true
+    type: plugin
+    description: "Frontend design plugin - used by builder for UI implementation guidance"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Workflow Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+workflow:
+  # Strategist must complete their customer interview before other agents start
+  strategist_first: true
+
+  # After strategist brief is ready, artist and builder work simultaneously
+  parallel_artist_builder: true
+
+  # UX tester waits for builder completion before testing
+  ux_test_on_build: true
+
+  # No worktrees — all agents work in the same project directory
+  use_worktrees: false
+
+  # Branch prefix (if git branching is used)
+  branch_prefix: "harnest/"
+
+  # Website is complete when UX tester signs off
+  require_ux_approval: true
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Tmux Split-Pane Mode
+# Used by `harnest fly` to run agents as separate claude processes in tmux panes.
+#
+# Intended layout (monitor spans center column, double width):
+#
+#   ┌───────────────┬───────────────────────────────┬───────────────┐
+#   │  strategist   │                               │    builder    │
+#   ├───────────────┤          monitor              ├───────────────┤
+#   │    artist     │                               │   ux-tester   │
+#   └───────────────┴───────────────────────────────┴───────────────┘
+#
+# Note: The centered spanning monitor requires a future harnest enhancement.
+# Current tiled layout approximates this arrangement.
+# ──────────────────────────────────────────────────────────────────────────────
+tmux:
+  session_name: webpage
+  layout:
+    - [strategist, monitor, builder]
+    - [artist, ux-tester]
+  monitor:
+    refresh_interval: 2
+    show: [tasks, git, agents]

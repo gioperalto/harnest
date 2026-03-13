@@ -1,0 +1,44 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(uvx *)",
+      "Read",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(cat .env*)",
+      "Bash(cat secrets/*)",
+      "Read(.env*)",
+      "Read(secrets/*)",
+      "Edit(.env*)",
+      "Edit(secrets/*)",
+      "Write(.env*)",
+      "Write(secrets/*)"
+    ]
+  },
+  "mcpServers": {
+    "nanobanana": {
+      "command": "uvx",
+      "args": ["nanobanana-mcp-server@latest"],
+      "env": {
+        "GEMINI_API_KEY": ""
+      },
+      "disabled": false,
+      "_comment": "Nano Banana MCP - Used by artist for AI image generation. Requires GEMINI_API_KEY. Get a free key at makersuite.google.com/app/apikey. Set key in settings.local.json."
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "disabled": false,
+      "_comment": "Playwright MCP - Used by UX tester for browser simulation. Disable if not needed."
+    }
+  }
+}
