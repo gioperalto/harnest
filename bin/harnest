@@ -329,6 +329,19 @@ cmd_fly() {
     esac
   done
 
+  # ── Merge harnest.md instructions ───────────────────────────────────────
+  if [ -f "harnest.md" ]; then
+    local md_content
+    md_content="$(cat harnest.md)"
+    if [ -n "$task_desc" ]; then
+      task_desc="${task_desc}
+
+${md_content}"
+    else
+      task_desc="$md_content"
+    fi
+  fi
+
   # ── Validate prerequisites ──────────────────────────────────────────────
   if ! command -v tmux &>/dev/null; then
     echo "Error: tmux is required for 'harnest fly'. Install it with: brew install tmux" >&2
@@ -343,8 +356,8 @@ cmd_fly() {
     exit 1
   fi
   if [ -z "$task_desc" ]; then
-    echo "Error: Task description is required." >&2
-    echo "Usage: harnest fly [--chick <name>] <task description...>" >&2
+    echo "Error: Task description is required. Pass it as an argument or create a harnest.md file." >&2
+    echo "Usage: harnest fly [--chick <name>] [\"<task description>\"]" >&2
     exit 1
   fi
 
