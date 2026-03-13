@@ -54,11 +54,8 @@ Agent teams require the experimental teams feature. `harnest hatch` configures t
 
 1. **Install Harnest:**
    ```bash
+   brew tap gioperalto/harnest
    brew install harnest
-   ```
-   Or install from a local clone:
-   ```bash
-   brew install --formula Formula/harnest.rb
    ```
 
 2. **Hatch in your project:**

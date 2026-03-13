@@ -68,57 +68,42 @@ jobs:
           SHA256="$(sha256sum /tmp/release.tar.gz | awk '{print $1}')"
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
 
-      - name: Update Homebrew formula
+      - name: Push formula to Homebrew tap
         if: steps.check.outputs.exists == 'false'
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           SHA256="${{ steps.sha.outputs.sha256 }}"
           REPO="${{ github.repository }}"
 
-          python3 - "$TAG" "$SHA256" "$REPO" <<'PYEOF'
-          import sys, re
+          git clone https://x-access-token:${{ secrets.PAT }}@github.com/gioperalto/homebrew-harnest.git /tmp/homebrew-harnest
+          mkdir -p /tmp/homebrew-harnest/Formula
 
-          tag, sha256, repo = sys.argv[1], sys.argv[2], sys.argv[3]
+          cat > /tmp/homebrew-harnest/Formula/harnest.rb <<FORMULA
+          class Harnest < Formula
+            desc "Composable Claude Code agent team harness"
+            homepage "https://github.com/${REPO}"
+            url "https://github.com/${REPO}/archive/refs/tags/${TAG}.tar.gz"
+            sha256 "${SHA256}"
+            license "MIT"
 
-          with open("Formula/harnest.rb") as f:
-              content = f.read()
+            def install
+              bin.install "bin/harnest"
+              (share/"harnest/nest").install Dir["nest/*"]
+              (share/"harnest/lib").install Dir["lib/*"]
+            end
+          end
+          FORMULA
 
-          # Update url line
-          content = re.sub(
-              r'url ".*"',
-              f'url "https://github.com/{repo}/archive/refs/tags/{tag}.tar.gz"',
-              content,
-          )
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' /tmp/homebrew-harnest/Formula/harnest.rb
 
-          # Update or insert sha256 line
-          if re.search(r'^\s*sha256\s+"', content, re.MULTILINE):
-              content = re.sub(
-                  r'(^\s*)sha256\s+".*"',
-                  rf'\1sha256 "{sha256}"',
-                  content,
-                  flags=re.MULTILINE,
-              )
-          else:
-              content = re.sub(
-                  r'(url ".*")',
-                  rf'\1\n  sha256 "{sha256}"',
-                  content,
-              )
-
-          with open("Formula/harnest.rb", "w") as f:
-              f.write(content)
-          PYEOF
-
-      - name: Commit and push formula update
-        if: steps.check.outputs.exists == 'false'
-        run: |
+          cd /tmp/homebrew-harnest
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/harnest.rb
-          # Only commit if there are changes
           if git diff --cached --quiet; then
-            echo "No formula changes to commit"
+            echo "No tap formula changes to commit"
           else
-            git commit -m "chore: update formula for ${{ steps.version.outputs.tag }}"
-            git push origin HEAD:main
+            git commit -m "chore: update formula for ${TAG}"
+            git push origin main
           fi
