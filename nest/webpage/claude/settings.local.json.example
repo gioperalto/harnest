@@ -1,0 +1,18 @@
+{
+  "_comment": "Local overrides — copy this to settings.local.json and customize. This file is gitignored.",
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "mcpServers": {
+    "nanobanana": {
+      "env": {
+        "GEMINI_API_KEY": "your-gemini-api-key-here"
+      },
+      "_comment": "Get a free Gemini API key at makersuite.google.com/app/apikey. Requires uv installed (brew install uv)."
+    },
+    "playwright": {
+      "disabled": false
+    }
+  }
+}
