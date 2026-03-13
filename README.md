@@ -1,3 +1,5 @@
+![Harness Banner](image_url "/images/banner.png")
+
 # Harnest
 
 > *Every flock needs a nest. Every nest needs its chicks.*
