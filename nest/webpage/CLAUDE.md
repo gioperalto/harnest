@@ -70,27 +70,9 @@ When the UX tester signs off:
 - **Target**: Single-page, compacted output (`npm run build` → `dist/`)
 - **Images**: Placed in `public/`, referenced as root-relative paths (`/filename.ext`)
 
-## Tmux Mode
-
-Use `harnest fly "<task>"` to launch agents in split panes. Intended layout:
-
-```
-┌───────────────┬───────────────────────────────┬───────────────┐
-│  strategist   │                               │    builder    │
-├───────────────┤          monitor              ├───────────────┤
-│    artist     │                               │   ux-tester   │
-└───────────────┴───────────────────────────────┴───────────────┘
-```
-
-The monitor pane (center) displays a live dashboard of task status, agent state, and git activity.
-
-> **Note**: The full-height spanning center monitor is the intended layout. Current Harnest uses a tiled approximation.
-
-Use `harnest land` to tear down the session.
-
 ## Important Notes
 
-- **Nano Banana MCP credentials**: Never store API keys or credential paths in settings files. Pass credentials as shell env vars before running `harnest fly`:
+- **Nano Banana MCP credentials**: Never store API keys or credential paths in settings files. Pass credentials as shell env vars before running `claude`:
   - **Vertex AI** (recommended — uses a service account credential file):
     ```bash
     export NANOBANANA_AUTH_METHOD=vertex_ai

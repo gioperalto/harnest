@@ -94,26 +94,3 @@ workflow:
   # Website is complete when UX tester signs off
   require_ux_approval: true
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Tmux Split-Pane Mode
-# Used by `harnest fly` to run agents as separate claude processes in tmux panes.
-#
-# Intended layout (monitor spans center column, double width):
-#
-#   ┌───────────────┬───────────────────────────────┬───────────────┐
-#   │  strategist   │                               │    builder    │
-#   ├───────────────┤          monitor              ├───────────────┤
-#   │    artist     │                               │   ux-tester   │
-#   └───────────────┴───────────────────────────────┴───────────────┘
-#
-# Note: The centered spanning monitor requires a future harnest enhancement.
-# Current tiled layout approximates this arrangement.
-# ──────────────────────────────────────────────────────────────────────────────
-tmux:
-  session_name: webpage
-  layout:
-    - [strategist, monitor, builder]
-    - [artist, ux-tester]
-  monitor:
-    refresh_interval: 2
-    show: [tasks, git, agents]
