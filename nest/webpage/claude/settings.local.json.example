@@ -9,8 +9,8 @@
         "Option A — Vertex AI (recommended, uses a service account credential file):",
         "  export NANOBANANA_AUTH_METHOD=vertex_ai",
         "  export GCP_PROJECT_ID=your-gcp-project-id",
-        "  export GCP_REGION=us-central1",
         "  export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json",
+        "  # GCP_REGION defaults to 'global' (required for Pro model) — only set if needed",
         "",
         "Option B — Gemini API key (simpler, but a direct secret):",
         "  export NANOBANANA_AUTH_METHOD=api_key",
@@ -18,9 +18,6 @@
         "",
         "Then run: harnest fly \"build a website for ...\""
       ]
-    },
-    "playwright": {
-      "disabled": false
     }
   }
 }

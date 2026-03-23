@@ -95,8 +95,8 @@ Use `harnest land` to tear down the session.
     ```bash
     export NANOBANANA_AUTH_METHOD=vertex_ai
     export GCP_PROJECT_ID=your-gcp-project-id
-    export GCP_REGION=us-central1
     export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+    # GCP_REGION defaults to "global" (required for Pro model) — only set if needed
     ```
   - **Gemini API key** (simpler alternative):
     ```bash
