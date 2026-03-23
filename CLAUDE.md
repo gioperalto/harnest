@@ -69,14 +69,6 @@ Jr engineers use the prefix from `workflow.branch_prefix` (default: `harnest/`):
 harnest/<task-id>-<short-description>
 ```
 
-## Tmux Mode
-
-Harnest also supports a **tmux split-pane mode** where each agent runs as a separate `claude` CLI process in its own tmux pane. Use `harnest fly "<task>"` to launch and `harnest land` to tear down.
-
-In tmux mode, agents coordinate through the `.harnest/` filesystem directory instead of built-in Claude Code team tools. Each agent's prompt includes a coordination protocol that explains how to read/write task files, send messages, and update status through the filesystem. The layout includes a monitor pane with a live dashboard.
-
-This is an alternative to the built-in Agent teams workflow above — use whichever fits your needs.
-
 ## Important Notes
 
 - **Teams feature**: Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (set in `.claude/settings.json`)

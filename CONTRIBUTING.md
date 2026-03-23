@@ -9,10 +9,8 @@ Harnest uses bird-centric terminology throughout the codebase:
 - **nest** — the `nest/` directory; the collection of all chicks
 - **chick** — a specific team configuration (e.g., `fullstack`) scaffolded by `harnest hatch`
 - **hatch** — the init command; scaffolds a chick into a project
-- **fly** — the start command; launches agents in tmux split panes
-- **land** — the stop command; tears down the tmux session
 
-When writing code, docs, or error messages, prefer this vocabulary over "template", "init", "start", and "stop".
+When writing code, docs, or error messages, prefer this vocabulary over "template" and "init".
 
 ## Fork Workflow
 
@@ -74,28 +72,7 @@ nest/<chick-name>/
 
 ```
 bin/harnest       CLI entrypoint (bash)
-lib/              Shared libraries and assets
-  harnest-parse-yaml.py       YAML → JSON parser (python3)
-  harnest-tmux-protocol.md    Coordination protocol for tmux mode agents
-  harnest-monitor.sh          Dashboard script for tmux monitor pane
 nest/             Chick directories scaffolded by `harnest hatch`
-```
-
-### Tmux Mode Development
-
-The `harnest fly` / `harnest land` commands implement tmux split-pane mode. Key files:
-
-- **`bin/harnest`** — `cmd_fly` and `cmd_land` functions handle session lifecycle
-- **`lib/harnest-parse-yaml.py`** — Parses `harnest.yaml` to JSON; uses PyYAML if available, fallback parser otherwise
-- **`lib/harnest-tmux-protocol.md`** — Coordination protocol prepended to each agent's prompt
-- **`lib/harnest-monitor.sh`** — Dashboard for the monitor pane; uses `jq` if available, `python3` fallback
-
-To test tmux mode locally:
-```bash
-# From a clone of the repo
-./bin/harnest fly "your test task"
-# In another terminal
-./bin/harnest land
 ```
 
 ## Code Style

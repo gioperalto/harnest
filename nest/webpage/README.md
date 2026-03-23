@@ -68,54 +68,6 @@ workflow:
   require_ux_approval: true       # Website done only when UX tester signs off
 ```
 
-## Tmux Split-Pane Mode
-
-In addition to the built-in Agent teams workflow, this chick supports running agents as separate `claude` processes in tmux split panes.
-
-**Start a session:**
-```bash
-harnest fly "build a portfolio website for a freelance photographer"
-```
-
-This creates a tmux session with the following intended layout:
-
-```
-┌───────────────┬───────────────────────────────┬───────────────┐
-│  strategist   │                               │    builder    │
-├───────────────┤          monitor              ├───────────────┤
-│    artist     │                               │   ux-tester   │
-└───────────────┴───────────────────────────────┴───────────────┘
-```
-
-- **Strategist** (top-left): Runs first, interviews you interactively
-- **Monitor** (center, double width): Live dashboard — task status, agent states, git log
-- **Builder** (top-right): Builds the website skeleton, integrates assets
-- **Artist** (bottom-left): Generates and saves images to `public/`
-- **UX Tester** (bottom-right): Validates the completed site
-
-Each agent pane runs a separate `claude -p` process with a generated prompt that includes the coordination protocol and agent instructions. Agents coordinate through the `.harnest/` directory using file-based messaging.
-
-> **Layout note**: The full-height spanning center monitor column is the intended design. Current Harnest uses a tiled layout approximation — a future enhancement will support the exact spanning layout.
-
-**Stop the session:**
-```bash
-harnest land
-```
-
-**Configure the layout** in `harnest.yaml`:
-```yaml
-tmux:
-  session_name: webpage
-  layout:
-    - [strategist, monitor, builder]
-    - [artist, ux-tester]
-  monitor:
-    refresh_interval: 2
-    show: [tasks, git, agents]
-```
-
-**Requirements:** `tmux` and `claude` CLI must be installed.
-
 ## Supplementary Tools
 
 All supplementary tools are optional but strongly recommended. Disable any tool by setting `enabled: false` in `harnest.yaml` and `"disabled": true` in `.claude/settings.json`.
@@ -128,7 +80,7 @@ Provides the artist with AI image generation powered by Gemini.
 
 **Credentials are passed as shell env vars — never stored in settings files.**
 
-Export one of the following before running `harnest fly`:
+Export one of the following before running `claude`:
 
 **Option A — Vertex AI (recommended):**
 ```bash

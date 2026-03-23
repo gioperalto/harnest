@@ -59,53 +59,6 @@ workflow:
   require_test_approval: true   # Require test engineer sign-off to merge
 ```
 
-## Tmux Split-Pane Mode
-
-In addition to the built-in Agent teams workflow, this chick supports running agents as separate `claude` processes in tmux split panes.
-
-**Start a session:**
-```bash
-harnest fly "build a user authentication system"
-```
-
-This creates a tmux session with the following layout:
-
-```
-┌───────────────────┬───────────────────┐
-│   architect       │   sr-engineer     │
-├───────────────────┼───────────────────┤
-│   jr-engineer-1   │   jr-engineer-2   │
-├───────────────────┴───┬───────────────┤
-│   test-engineer       │   monitor     │
-└───────────────────────┴───────────────┘
-```
-
-Each agent pane runs a separate `claude -p` process with an auto-generated prompt that includes the coordination protocol and agent instructions. The **monitor** pane displays a live dashboard showing task status, agent state, recent git commits, and activity logs.
-
-**Coordination:** Agents coordinate through the `.harnest/` directory using JSON files for tasks, messages, and status updates — no built-in Claude Code team tools required.
-
-**Stop a session:**
-```bash
-harnest land
-```
-
-This kills the tmux session, removes git worktrees, prints a task summary, and optionally archives the `.harnest/` directory.
-
-**Configure the layout** in `harnest.yaml`:
-```yaml
-tmux:
-  session_name: harnest
-  layout:
-    - [architect, sr-engineer]
-    - [jr-engineer-1, jr-engineer-2]
-    - [test-engineer, monitor]
-  monitor:
-    refresh_interval: 2
-    show: [tasks, git, agents]
-```
-
-**Requirements:** `tmux` and `claude` CLI must be installed.
-
 ## Supplementary Tools
 
 All supplementary tools are optional. The chick works without them, but they enhance specific agent capabilities. Disable any tool by setting `enabled: false` in `harnest.yaml` and `"disabled": true` in `.claude/settings.json`.
