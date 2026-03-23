@@ -126,23 +126,30 @@ All supplementary tools are optional but strongly recommended. Disable any tool 
 
 Provides the artist with AI image generation powered by Gemini.
 
-**Setup:**
-1. Get a free Gemini API key at [makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
-2. Set your key in `.claude/settings.local.json`:
-   ```json
-   {
-     "mcpServers": {
-       "nanobanana": {
-         "env": {
-           "GEMINI_API_KEY": "your-key-here"
-         }
-       }
-     }
-   }
-   ```
-3. Requires `uv` installed (`brew install uv` or `pip install uv`)
+**Credentials are passed as shell env vars — never stored in settings files.**
 
-The MCP server runs via `uvx nanobanana-mcp-server@latest` — no separate installation needed beyond `uv`.
+Export one of the following before running `harnest fly`:
+
+**Option A — Vertex AI (recommended):**
+```bash
+export NANOBANANA_AUTH_METHOD=vertex_ai
+export GCP_PROJECT_ID=your-gcp-project-id
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+# GCP_REGION defaults to "global" (required for Pro model) — only set if needed
+```
+
+**Option B — Gemini API key (simpler alternative):**
+```bash
+export NANOBANANA_AUTH_METHOD=api_key
+export GEMINI_API_KEY=your-key-here
+```
+
+Then enable the server by copying the example and setting `"disabled": false`:
+```bash
+cp claude/settings.local.json.example claude/settings.local.json
+```
+
+Requires `uv` installed (`brew install uv` or `pip install uv`). The MCP server runs via `uvx nanobanana-mcp-server@latest` — no separate installation needed beyond `uv`.
 
 **If unavailable:** The artist will use descriptive placeholder comments and CSS gradient backgrounds instead.
 
@@ -162,7 +169,9 @@ See the [Claude Code frontend-design plugin](https://github.com/anthropics/claud
 
 ## Local Overrides
 
-Create `.claude/settings.local.json` to override settings without modifying the tracked `settings.json`. See `.claude/settings.local.json.example` for a template. This file is gitignored and will not be committed.
+Create `claude/settings.local.json` to override settings without modifying the tracked `settings.json`. See `claude/settings.local.json.example` for a template. This file is gitignored and will not be committed.
+
+**Important:** Do not store API keys or credential paths in `settings.local.json`. Credentials must be passed as shell env vars (see Nano Banana setup above).
 
 ## Output
 
@@ -177,7 +186,7 @@ The `dist/` directory contains the production output — a single compacted HTML
 ## Limitations
 
 - **Experimental feature**: Agent teams require `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. This is an experimental Claude Code feature and may change.
-- **Nano Banana API key**: Image generation requires a Gemini API key. Without it, the artist generates descriptive placeholders.
+- **Nano Banana credentials**: Image generation requires either a Vertex AI service account or a Gemini API key, passed as shell env vars. Without credentials, the artist generates descriptive placeholders.
 - **Single-page only**: This chick is designed for single-page static sites. Multi-page, server-side, or database-backed sites are out of scope — use the `fullstack` chick instead.
 - **No worktrees**: All agents share the project directory. Parallel edits are possible but the agents are designed to work on complementary concerns (images vs. code) to minimize conflicts.
 - **Session persistence**: Teams exist only within a single Claude Code session. They are not persisted across sessions.
