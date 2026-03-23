@@ -1,0 +1,16 @@
+{
+  "_comment": "Local overrides — copy this to settings.local.json and customize. This file is gitignored. DO NOT store API keys here — pass them as shell env vars instead.",
+  "mcpServers": {
+    "tavily": {
+      "disabled": false,
+      "_comment": [
+        "Tavily Search MCP for richer web research. Credentials are NOT stored here.",
+        "",
+        "Get a free API key at https://tavily.com, then:",
+        "  export TAVILY_API_KEY=tvly-your-key-here",
+        "",
+        "Then run: claude"
+      ]
+    }
+  }
+}

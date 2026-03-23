@@ -1,0 +1,94 @@
+# harnest - Meta Chick Creator
+# Drop this config + .claude/ directory into the harnest repo to enable chick creation.
+#
+# Two researchers investigate the concept in parallel. The synthesizer merges findings
+# and interviews the user. The builder scaffolds all chick files. The reviewer
+# validates against harnest conventions before sign-off.
+
+team:
+  name: chick
+  description: "Meta chick: helps users design and create new harnest chicks"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Agent Definitions
+# Each agent has a role, model, count, and description.
+# Models: opus | sonnet | haiku
+# The agent_file references .claude/agents/<name>.md
+# ──────────────────────────────────────────────────────────────────────────────
+agents:
+  researcher:
+    model: haiku
+    count: 2
+    agent_file: researcher.md
+    description: >
+      Runs in parallel pairs. researcher-1 searches the domain's tooling and
+      ecosystem; researcher-2 searches team structures and workflow patterns.
+      Each writes a research report to .harnest/research-<N>.md.
+    supplementary_tool: tavily
+
+  synthesizer:
+    model: opus
+    count: 1
+    agent_file: synthesizer.md
+    description: >
+      Reads both research reports, interviews the user to clarify intent, then
+      writes a design brief to .harnest/brief.md. Runs after researchers complete.
+    supplementary_tool: mermaid
+
+  builder:
+    model: sonnet
+    count: 1
+    agent_file: builder.md
+    description: >
+      Reads the synthesizer's brief and creates all chick files in nest/<chick-name>/
+      following the conventions of existing chicks (fullstack, webpage). Strict
+      adherence to frontmatter, YAML structure, settings patterns, and CLAUDE.md order.
+
+  reviewer:
+    model: sonnet
+    count: 1
+    agent_file: reviewer.md
+    description: >
+      Audits every generated file against the harnest convention checklist.
+      Writes feedback to .harnest/review.md. Approves or lists specific issues
+      for the builder to fix.
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Supplementary Tools (all optional)
+# Set enabled: false to disable any tool. The harness works without them.
+# ──────────────────────────────────────────────────────────────────────────────
+tools:
+  tavily:
+    enabled: true
+    type: mcp
+    description: "Tavily Search MCP - used by researchers for richer web search. Falls back to built-in WebSearch/WebFetch when disabled."
+    server_name: tavily
+
+  mermaid:
+    enabled: true
+    type: mcp
+    description: "Mermaid MCP Server - used by synthesizer to generate workflow diagrams for the design brief"
+    server_name: mermaid
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Workflow Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+workflow:
+  # Both researchers run simultaneously before synthesizer starts
+  parallel_research: true
+
+  # Synthesizer runs after both researchers complete — must finish before builder starts
+  synthesizer_first: true
+
+  # Reviewer validates after builder completes
+  review_on_build: true
+
+  # Chick is complete only when reviewer signs off
+  require_reviewer_approval: true
+
+  # No worktrees — all agents work in the same directory
+  use_worktrees: false
+
+  # Branch prefix for any git work during chick creation
+  branch_prefix: "chick/"
+

@@ -1,0 +1,39 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(uvx *)",
+      "Bash(npx *)",
+      "Read",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(cat .env*)",
+      "Bash(cat secrets/*)",
+      "Read(.env*)",
+      "Read(secrets/*)",
+      "Edit(.env*)",
+      "Edit(secrets/*)",
+      "Write(.env*)",
+      "Write(secrets/*)"
+    ]
+  },
+  "mcpServers": {
+    "tavily": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp@latest"],
+      "disabled": true,
+      "_comment": "Tavily Search MCP - used by researchers for richer web search. Requires TAVILY_API_KEY env var. See settings.local.json.example for setup. Falls back to built-in WebSearch/WebFetch when disabled."
+    },
+    "mermaid": {
+      "command": "npx",
+      "args": ["-y", "@mermaid-js/mcp@latest"],
+      "disabled": false,
+      "_comment": "Mermaid MCP - used by synthesizer for workflow diagram generation. No credentials required."
+    }
+  }
+}
