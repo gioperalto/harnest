@@ -28,11 +28,8 @@
     "nanobanana": {
       "command": "uvx",
       "args": ["nanobanana-mcp-server@latest"],
-      "env": {
-        "GEMINI_API_KEY": ""
-      },
-      "disabled": false,
-      "_comment": "Nano Banana MCP - Used by artist for AI image generation. Requires GEMINI_API_KEY. Get a free key at makersuite.google.com/app/apikey. Set key in settings.local.json."
+      "disabled": true,
+      "_comment": "Nano Banana MCP - Used by artist for AI image generation. Credentials are passed via shell env vars — never stored in this file. See settings.local.json.example for setup instructions."
     },
     "playwright": {
       "command": "npx",
