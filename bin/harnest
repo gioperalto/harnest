@@ -302,10 +302,30 @@ cmd_hatch() {
     merge_settings "$chick_dir/claude/settings.json" ".claude/settings.json" "$force"
   fi
 
+  # 6. mcp.json.example — copy if present; add .mcp.json to .gitignore
+  if [ -f "$chick_dir/claude/mcp.json.example" ]; then
+    copy_file "$chick_dir/claude/mcp.json.example" ".mcp.json.example" "$force" || true
+    if [ -f ".gitignore" ]; then
+      if ! grep -qxF '.mcp.json' .gitignore; then
+        echo '.mcp.json' >> .gitignore
+        info "added .mcp.json to .gitignore"
+      fi
+    else
+      echo '.mcp.json' > .gitignore
+      info "created .gitignore with .mcp.json"
+    fi
+  fi
+
   echo ""
   echo "Done! Next steps:"
   echo "  1. Customize harnest.yaml (optional)"
-  echo "  2. Run 'claude' to start a harnest session"
+  if [ -f ".mcp.json.example" ]; then
+    echo "  2. Set up Nano Banana MCP for AI image generation:"
+    echo "     cp .mcp.json.example .mcp.json   # credentials via shell env vars — see .mcp.json.example"
+    echo "  3. Run 'claude' to start a harnest session"
+  else
+    echo "  2. Run 'claude' to start a harnest session"
+  fi
 }
 
 # ── Fly command (tmux split-pane mode) ───────────────────────────────────────

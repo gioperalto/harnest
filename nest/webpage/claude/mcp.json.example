@@ -1,0 +1,22 @@
+{
+  "_comment": "Copy this to .mcp.json in your project root. DO NOT commit .mcp.json — add it to .gitignore. Credentials are passed as shell env vars, never stored here.",
+  "mcpServers": {
+    "nanobanana": {
+      "command": "uvx",
+      "args": ["nanobanana-mcp-server@latest"],
+      "_auth_comment": [
+        "Export one of the following before running 'claude' (teams mode) or 'harnest fly' (tmux mode):",
+        "",
+        "Option A — Vertex AI (recommended):",
+        "  export NANOBANANA_AUTH_METHOD=vertex_ai",
+        "  export GCP_PROJECT_ID=your-gcp-project-id",
+        "  export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json",
+        "  # GCP_REGION defaults to 'global' (required for Pro model) — only set if needed",
+        "",
+        "Option B — Gemini API key:",
+        "  export NANOBANANA_AUTH_METHOD=api_key",
+        "  export GEMINI_API_KEY=your-key-here"
+      ]
+    }
+  }
+}
