@@ -66,9 +66,27 @@ A [subject], [style], [lighting], [color palette], [mood/atmosphere], high quali
 Example: "A coastal photography studio interior, minimalist modern style, soft diffused natural window light, warm whites and natural wood tones, calm and professional atmosphere, wide angle"
 ```
 
+## Authentication
+
+Nano Banana MCP reads credentials from shell environment variables — nothing is stored in settings files. Before running, export one of:
+
+**Vertex AI** (recommended):
+```bash
+export NANOBANANA_AUTH_METHOD=vertex_ai
+export GCP_PROJECT_ID=your-gcp-project-id
+export GCP_REGION=us-central1
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+```
+
+**Gemini API key**:
+```bash
+export NANOBANANA_AUTH_METHOD=api_key
+export GEMINI_API_KEY=your-key
+```
+
 ## When Nano Banana MCP Is Unavailable
 
-If `GEMINI_API_KEY` is not set or the MCP server isn't configured:
+If credentials are not set in the environment or the MCP server isn't configured:
 1. Create solid-color or gradient placeholder images using ImageMagick if available:
    ```bash
    convert -size 1920x1080 gradient:#2563eb-#1e40af public/hero-bg.jpg

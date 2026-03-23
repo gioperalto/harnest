@@ -58,7 +58,7 @@ tools:
   nanobanana:
     enabled: true
     type: mcp
-    description: "Nano Banana MCP - used by artist for AI image generation (Gemini-powered)"
+    description: "Nano Banana MCP - used by artist for AI image generation. Auth via shell env vars (Vertex AI or Gemini API key). No credentials stored in files."
     server_name: nanobanana
 
   playwright:
