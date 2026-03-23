@@ -90,7 +90,20 @@ Use `harnest land` to tear down the session.
 
 ## Important Notes
 
-- **Nano Banana MCP**: Artist requires a `GEMINI_API_KEY`. Get a free key at [makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey). Set it in `.claude/settings.local.json` under `mcpServers.nanobanana.env.GEMINI_API_KEY`.
+- **Nano Banana MCP credentials**: Never store API keys or credential paths in settings files. Pass credentials as shell env vars before running `harnest fly`:
+  - **Vertex AI** (recommended — uses a service account credential file):
+    ```bash
+    export NANOBANANA_AUTH_METHOD=vertex_ai
+    export GCP_PROJECT_ID=your-gcp-project-id
+    export GCP_REGION=us-central1
+    export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
+    ```
+  - **Gemini API key** (simpler alternative):
+    ```bash
+    export NANOBANANA_AUTH_METHOD=api_key
+    export GEMINI_API_KEY=your-key
+    ```
+  Enable the server by setting `"disabled": false` in `settings.local.json` (copy from `settings.local.json.example`).
 - **frontend-design plugin**: Highly recommended for the builder. Enable it in Claude Code settings.
 - **Playwright MCP**: Required for the UX tester browser simulation.
 - **No worktrees**: All agents work in the same project directory (`use_worktrees: false`).

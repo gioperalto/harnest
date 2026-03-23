@@ -1,5 +1,7 @@
 .claude/
 .harnest/
+.mcp.json
+nest/**/claude/settings.local.json
 .DS_Store
 Thumbs.db
 *.swp
