@@ -1,15 +1,23 @@
 {
-  "_comment": "Local overrides — copy this to settings.local.json and customize. This file is gitignored.",
-  "permissions": {
-    "allow": [],
-    "deny": []
-  },
+  "_comment": "Local overrides — copy this to settings.local.json and customize. This file is gitignored. DO NOT store API keys or credentials here — pass them as shell env vars instead.",
   "mcpServers": {
     "nanobanana": {
-      "env": {
-        "GEMINI_API_KEY": "your-gemini-api-key-here"
-      },
-      "_comment": "Get a free Gemini API key at makersuite.google.com/app/apikey. Requires uv installed (brew install uv)."
+      "disabled": false,
+      "_comment": [
+        "Nano Banana MCP for AI image generation. Credentials are NOT stored here.",
+        "",
+        "Option A — Vertex AI (recommended, uses a service account credential file):",
+        "  export NANOBANANA_AUTH_METHOD=vertex_ai",
+        "  export GCP_PROJECT_ID=your-gcp-project-id",
+        "  export GCP_REGION=us-central1",
+        "  export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json",
+        "",
+        "Option B — Gemini API key (simpler, but a direct secret):",
+        "  export NANOBANANA_AUTH_METHOD=api_key",
+        "  export GEMINI_API_KEY=your-key-here",
+        "",
+        "Then run: harnest fly \"build a website for ...\""
+      ]
     },
     "playwright": {
       "disabled": false
