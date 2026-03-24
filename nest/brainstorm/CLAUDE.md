@@ -51,7 +51,7 @@ All team settings live in `harnest.yaml` at the project root. Read it at the sta
 |--------------|--------|-------|-----------------------------------------------------------------|
 | Facilitator  | opus   | 1     | Interviews user, frames the challenge, selects frameworks       |
 | Explorer     | sonnet | 1     | Generates ideas via structured methods (SCAMPER, 6 Hats, etc.) |
-| Provocateur  | haiku  | 1     | Generates unconventional ideas — Gemini primary via CCR, Claude haiku fallback |
+| Provocateur  | gemini | 1     | Generates unconventional ideas — Gemini primary via CCR, Claude haiku fallback |
 | Synthesizer  | sonnet | 1     | Merges all ideas, clusters themes, writes final output          |
 
 ## Workflow: How to Bootstrap a Team

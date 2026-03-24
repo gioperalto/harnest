@@ -15,10 +15,8 @@ team:
 # ──────────────────────────────────────────────────────────────────────────────
 # Agent Definitions
 # Each agent has a role, model, count, and description.
-# Models: opus | sonnet | haiku
+# Models: opus | sonnet | haiku | gemini
 # The agent_file references .claude/agents/<name>.md
-# NOTE: The provocateur uses model: haiku. With CCR, this routes to Gemini as
-# the primary model. Without CCR, it falls back to Claude haiku.
 # ──────────────────────────────────────────────────────────────────────────────
 agents:
   facilitator:
@@ -40,7 +38,7 @@ agents:
       Writes ideas to .brainstorm/ideas-explorer.md. Runs in parallel with provocateur.
 
   provocateur:
-    model: haiku
+    model: gemini
     count: 1
     agent_file: provocateur.md
     description: >

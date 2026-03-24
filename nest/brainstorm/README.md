@@ -101,7 +101,7 @@ agents:
     count: 1
 
   provocateur:
-    model: haiku      # Gemini primary via CCR; Claude haiku fallback without CCR
+    model: gemini     # Gemini primary via CCR; Claude haiku fallback without CCR
     count: 1
 
   synthesizer:
