@@ -1,0 +1,19 @@
+# Trigger the harnest-website rebuild when chick configs change
+name: Update website
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "nest/**"
+
+jobs:
+  trigger-website-rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger harnest-website rebuild
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+          repository: gioperalto/harnest-website
+          event-type: chick-updated
