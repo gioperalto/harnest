@@ -1,0 +1,21 @@
+{
+  "_comment": [
+    "Local overrides — copy to settings.local.json. NOT committed.",
+    "",
+    "No MCP servers are required by default for the webgame chick.",
+    "",
+    "Optional: enable Playwright MCP if you want the playtester to do",
+    "browser-based testing in addition to static code review.",
+    "",
+    "  1. Copy this file: cp claude/settings.local.json.example claude/settings.local.json",
+    "  2. Set 'disabled': false on the servers you want to enable."
+  ],
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "disabled": true,
+      "_comment": "Playwright MCP - Optional. Enables browser-based playtesting. Set disabled: false to enable."
+    }
+  }
+}
