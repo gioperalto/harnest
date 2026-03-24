@@ -4,13 +4,18 @@ This chick applies generalizable brainstorming frameworks to any creative challe
 
 ## Prerequisites
 
-This chick requires **claude-code-router (ccr)**. Install it before running:
+This chick requires **[claude-code-router](https://github.com/musistudio/claude-code-router) (ccr)** to route agents through Gemini. Install it before running:
 
 ```bash
-npm install -g @musistudio/claude-code-router
+brew install claude-code-router
 ```
 
-Configure `~/.claude-code-router/config.json` to route `haiku` model calls to Gemini (used by the provocateur agent):
+Set your Gemini API key (get one free at [Google AI Studio](https://aistudio.google.com)):
+```bash
+export GEMINI_API_KEY=your-key-here
+```
+
+Configure `~/.claude-code-router/config.json` so Gemini is the primary model. Without CCR, agents fall back to their listed Claude models (opus/sonnet/haiku):
 
 ```json
 {
@@ -24,19 +29,15 @@ Configure `~/.claude-code-router/config.json` to route `haiku` model calls to Ge
     }
   ],
   "router": {
-    "default": "anthropic,claude-sonnet-4-5",
-    "background": "gemini,gemini-2.5-flash"
+    "default": "gemini,gemini-2.5-flash",
+    "think": "gemini,gemini-2.5-pro"
   }
 }
 ```
 
-Set your Gemini API key:
+Apply config changes and launch with `ccr code` instead of `claude`:
 ```bash
-export GEMINI_API_KEY=your-key-here
-```
-
-Then launch with `ccr code` instead of `claude`:
-```bash
+ccr restart
 ccr code
 ```
 
@@ -50,7 +51,7 @@ All team settings live in `harnest.yaml` at the project root. Read it at the sta
 |--------------|--------|-------|-----------------------------------------------------------------|
 | Facilitator  | opus   | 1     | Interviews user, frames the challenge, selects frameworks       |
 | Explorer     | sonnet | 1     | Generates ideas via structured methods (SCAMPER, 6 Hats, etc.) |
-| Provocateur  | haiku  | 1     | Generates unconventional ideas via Gemini (CCR-routed)          |
+| Provocateur  | haiku  | 1     | Generates unconventional ideas — Gemini primary via CCR, Claude haiku fallback |
 | Synthesizer  | sonnet | 1     | Merges all ideas, clusters themes, writes final output          |
 
 ## Workflow: How to Bootstrap a Team
@@ -105,9 +106,9 @@ brainstorm/<session-id>-<topic-slug>
 
 ## Important Notes
 
-- **CCR required**: The provocateur agent routes to Gemini via `claude-code-router`. Run `ccr code` instead of `claude`. Without CCR, the provocateur falls back to the standard haiku model.
+- **CCR recommended**: This chick is designed to run through `claude-code-router`, which routes agents to Gemini as the primary model. Run `ccr code` instead of `claude`. Without CCR, all agents fall back to their listed Claude models (opus/sonnet/haiku) — the workflow is fully functional either way.
 - **Gemini API key**: Get a key from [Google AI Studio](https://aistudio.google.com). Pass as `GEMINI_API_KEY` env var — never store in config files.
-- **CCR config location**: `~/.claude-code-router/config.json`. Run `ccr restart` after editing the config.
+- **CCR config location**: `~/.claude-code-router/config.json`. Run `ccr restart` after editing the config. See the [CCR repository](https://github.com/musistudio/claude-code-router) for full documentation.
 - **Teams feature**: Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (set in `.claude/settings.json`).
 - **No worktrees**: All agents share the project directory. Shared files are isolated by convention (`.brainstorm/` directory).
 - **Session persistence**: Teams exist only within a single Claude Code session. They are not persisted across sessions.
