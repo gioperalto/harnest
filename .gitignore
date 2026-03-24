@@ -1,4 +1,5 @@
-claude.md
+/claude.md
+!nest/**/CLAUDE.md
 /harnest.yaml
 !nest/**/harnest.yaml
 .claude/
