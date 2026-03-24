@@ -5,7 +5,7 @@ description: >
   using lateral provocations. Gemini is the primary model via CCR; falls back to Claude
   haiku without CCR. Writes ideas to .brainstorm/ideas-provocateur.md. Runs in parallel
   with the explorer.
-model: haiku
+model: gemini
 tools: Read, Write
 permissionMode: default
 maxTurns: 40
