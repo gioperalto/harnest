@@ -1,5 +1,6 @@
 claude.md
-harnest.yaml
+/harnest.yaml
+!nest/**/harnest.yaml
 .claude/
 .harnest/
 .mcp.json
