@@ -17,7 +17,8 @@ team:
 # Each agent has a role, model, count, and description.
 # Models: opus | sonnet | haiku
 # The agent_file references .claude/agents/<name>.md
-# NOTE: The provocateur uses model: haiku, which maps to Gemini via CCR config.
+# NOTE: The provocateur uses model: haiku. With CCR, this routes to Gemini as
+# the primary model. Without CCR, it falls back to Claude haiku.
 # ──────────────────────────────────────────────────────────────────────────────
 agents:
   facilitator:
@@ -44,8 +45,8 @@ agents:
     agent_file: provocateur.md
     description: >
       Generates unconventional, contrarian, and wild ideas by challenging assumptions.
-      Uses Gemini via CCR for cross-model creative diversity. Writes ideas to
-      .brainstorm/ideas-provocateur.md. Runs in parallel with explorer.
+      Gemini is the primary model via CCR; falls back to Claude haiku without CCR.
+      Writes ideas to .brainstorm/ideas-provocateur.md. Runs in parallel with explorer.
 
   synthesizer:
     model: sonnet
