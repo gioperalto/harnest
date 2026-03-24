@@ -61,7 +61,7 @@ ccr code
 |---------------|--------|-------|-------------------------------------------------------------------------------------|
 | `facilitator` | opus   | 1     | Interviews user, frames the challenge, selects brainstorming frameworks             |
 | `explorer`    | sonnet | 1     | Generates ideas using structured methods (SCAMPER, Six Hats, reverse brainstorm)    |
-| `provocateur` | haiku  | 1     | Generates unconventional ideas — Gemini primary via CCR, Claude haiku fallback       |
+| `provocateur` | gemini | 1     | Generates unconventional ideas — Gemini primary via CCR, Claude haiku fallback       |
 | `synthesizer` | sonnet | 1     | Merges all ideas, clusters themes, writes prioritized output to brainstorm-output.md|
 
 ## Workflow
