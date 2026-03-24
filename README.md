@@ -96,6 +96,8 @@ The global default is stored in `~/.config/harnest/config` and used by `harnest 
 |-------|-------------|
 | [`fullstack`](nest/fullstack/) | Architect + Sr Engineer + Jr Engineers + Test Engineer. Plan → implement → review → test workflow. |
 | [`webpage`](nest/webpage/) | Strategist + Artist + Builder + UX Tester. Interview → generate assets → build → validate workflow for single-page React Vite TypeScript websites. |
+| [`chick`](nest/chick/) | Researcher + Synthesizer + Builder + Reviewer. Research a concept → interview user → scaffold a new chick → review for conventions. Meta chick that creates new chicks. |
+| [`brainstorm`](nest/brainstorm/) | Facilitator + Explorer + Provocateur (Gemini) + Synthesizer. Frame a challenge → generate ideas in parallel (structured + unconventional) → synthesize into actionable output. Requires [claude-code-router](https://github.com/musistudio/claude-code-router). |
 
 See the [nest/](nest/) directory for full documentation on each chick.
 
