@@ -1,0 +1,87 @@
+# harnest - Creative Brainstorming Chick
+# Drop this config + .claude/ directory into any project to launch a brainstorming team.
+#
+# The facilitator interviews the user and frames the problem. The explorer and provocateur
+# generate ideas in parallel — explorer uses structured methods, provocateur uses Gemini
+# for unconventional thinking. The synthesizer distills everything into actionable output.
+#
+# Requires claude-code-router (ccr) — run `ccr code` instead of `claude`.
+# See README.md for CCR installation and configuration.
+
+team:
+  name: brainstorm
+  description: "Creative brainstorming team: facilitator, explorer, provocateur, synthesizer"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Agent Definitions
+# Each agent has a role, model, count, and description.
+# Models: opus | sonnet | haiku
+# The agent_file references .claude/agents/<name>.md
+# NOTE: The provocateur uses model: haiku, which maps to Gemini via CCR config.
+# ──────────────────────────────────────────────────────────────────────────────
+agents:
+  facilitator:
+    model: opus
+    count: 1
+    agent_file: facilitator.md
+    description: >
+      Interviews the user to understand their problem or prompt, selects applicable
+      brainstorming frameworks, and writes a structured brief to .brainstorm/brief.md.
+      Runs before all other agents.
+
+  explorer:
+    model: sonnet
+    count: 1
+    agent_file: explorer.md
+    description: >
+      Generates a high volume of ideas using structured brainstorming methods
+      (SCAMPER, Six Thinking Hats, lateral thinking, reverse brainstorming).
+      Writes ideas to .brainstorm/ideas-explorer.md. Runs in parallel with provocateur.
+
+  provocateur:
+    model: haiku
+    count: 1
+    agent_file: provocateur.md
+    description: >
+      Generates unconventional, contrarian, and wild ideas by challenging assumptions.
+      Uses Gemini via CCR for cross-model creative diversity. Writes ideas to
+      .brainstorm/ideas-provocateur.md. Runs in parallel with explorer.
+
+  synthesizer:
+    model: sonnet
+    count: 1
+    agent_file: synthesizer.md
+    description: >
+      Merges and clusters all ideas from the explorer and provocateur, evaluates them
+      against the brief, and distills a final set of actionable recommendations to
+      brainstorm-output.md. Runs after both ideation agents complete.
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Supplementary Tools (all optional)
+# Set enabled: false to disable any tool. The harness works without them.
+# ──────────────────────────────────────────────────────────────────────────────
+tools:
+  mermaid:
+    enabled: true
+    type: mcp
+    description: "Mermaid MCP Server - used by synthesizer to generate diagrams and mind maps in the final output"
+    server_name: mermaid
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Workflow Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+workflow:
+  # Facilitator must complete interview and brief before other agents start
+  facilitator_first: true
+
+  # Explorer and provocateur generate ideas simultaneously
+  parallel_ideation: true
+
+  # Synthesizer runs only after both ideation agents complete
+  synthesize_on_ideation: true
+
+  # No worktrees — all agents work in the same project directory
+  use_worktrees: false
+
+  # Branch prefix (if git branching is used)
+  branch_prefix: "brainstorm/"

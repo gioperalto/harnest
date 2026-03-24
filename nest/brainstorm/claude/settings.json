@@ -1,0 +1,32 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npx *)",
+      "Read",
+      "Glob",
+      "Grep"
+    ],
+    "deny": [
+      "Bash(cat .env*)",
+      "Bash(cat secrets/*)",
+      "Read(.env*)",
+      "Read(secrets/*)",
+      "Edit(.env*)",
+      "Edit(secrets/*)",
+      "Write(.env*)",
+      "Write(secrets/*)"
+    ]
+  },
+  "mcpServers": {
+    "mermaid": {
+      "command": "npx",
+      "args": ["-y", "@mermaid-js/mcp@latest"],
+      "disabled": false,
+      "_comment": "Mermaid MCP - used by synthesizer to generate mind maps and cluster diagrams. No credentials required."
+    }
+  }
+}

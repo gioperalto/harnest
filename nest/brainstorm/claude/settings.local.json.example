@@ -1,0 +1,9 @@
+{
+  "_comment": "Local overrides — copy this to settings.local.json and customize. This file is gitignored. DO NOT store API keys here — pass them as shell env vars instead.",
+  "mcpServers": {
+    "mermaid": {
+      "disabled": true,
+      "_comment": "Set disabled: false to enable Mermaid diagram generation in the synthesizer's output. No credentials required."
+    }
+  }
+}
