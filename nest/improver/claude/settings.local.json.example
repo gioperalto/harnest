@@ -1,0 +1,4 @@
+{
+  "_comment": "Local overrides — copy this to settings.local.json and customize. This file is gitignored. DO NOT store API keys here — pass them as shell env vars instead.",
+  "mcpServers": {}
+}
