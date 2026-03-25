@@ -1,0 +1,68 @@
+# improver - Harnest Self-Improvement Chick
+# Selects a single improvement target (rubric item, new feature, or tech debt),
+# implements it on a patch/ branch, and submits a PR.
+
+team:
+  name: improver
+  description: "Single-improvement engine: pick a rubric item, new feature, or tech debt target, fix it, and ship a PR"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Agent Definitions
+# Each agent has a role, model, count, and description.
+# Models: opus | sonnet | haiku
+# The agent_file references claude/agents/<name>.md
+# ──────────────────────────────────────────────────────────────────────────────
+agents:
+  assessor:
+    model: opus
+    count: 1
+    agent_file: assessor.md
+    description: >
+      Reads nest/rubric.yaml, explores the harnest codebase, randomly selects an
+      improvement category (rubric_item, new_feature, or tech_debt), identifies the
+      highest-priority target within that category, performs a critical evaluation,
+      and writes a concrete improvement plan to .harnest/assessment.md.
+
+  implementer:
+    model: sonnet
+    count: 1
+    agent_file: implementer.md
+    description: >
+      Reads .harnest/assessment.md, creates the patch branch, implements the
+      improvement precisely and minimally, and commits the changes.
+
+  validator:
+    model: sonnet
+    count: 1
+    agent_file: validator.md
+    description: >
+      Critically reviews the implementation against the assessment plan. Checks
+      correctness, scope, code quality, and whether the improvement delivers what
+      was promised. Revises proposed rubric score deltas if warranted. Signs off
+      or requests one revision cycle from the implementer.
+
+  shipper:
+    model: sonnet
+    count: 1
+    agent_file: shipper.md
+    description: >
+      Reads .harnest/assessment.md and .harnest/validation.md. Updates
+      nest/rubric.yaml if the improvement is a rubric_item or new_feature (capped
+      at +2 per score). Bumps the minor version in VERSION for new_feature
+      improvements only. Commits all changes, pushes the branch, and creates a PR.
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Workflow Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+workflow:
+  # Assessor runs first and writes the improvement plan before any other agent starts
+  assessor_first: true
+
+  # All agents run sequentially: assessor → implementer → validator → shipper
+  sequential: true
+
+  # No worktrees — all agents operate in the same working directory
+  use_worktrees: false
+
+  # Branch prefix for patch branches created by the implementer
+  branch_prefix: "patch/"
