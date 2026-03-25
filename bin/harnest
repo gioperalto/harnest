@@ -754,6 +754,55 @@ for alias, cfg in chicks.items():
     info "copied flock.yaml to project root"
   fi
 
+  # Clean up flock-init artifacts so Claude doesn't re-enter the pipeline-creation
+  # loop. The flock chick hatches interviewer.md and composer.md plus a CLAUDE.md
+  # that instructs Claude to create a flock.yaml. Once flock.yaml exists these must
+  # be replaced with the conductor workflow.
+  for init_agent in interviewer.md composer.md; do
+    if [ -f ".claude/agents/$init_agent" ]; then
+      rm ".claude/agents/$init_agent"
+      info "removed flock-init agent: $init_agent"
+    fi
+  done
+
+  # Replace the harnest CLAUDE.md section with a flock-run directive that points
+  # Claude at the conductor agent instead of the pipeline-creation workflow.
+  if [ -f "CLAUDE.md" ] && grep -q "$MARKER_BEGIN" "CLAUDE.md" 2>/dev/null; then
+    local tmp
+    tmp="$(mktemp)"
+    local in_section=false
+    local replaced=false
+    while IFS= read -r line; do
+      if [ "$line" = "$MARKER_BEGIN" ]; then
+        in_section=true
+        if [ "$replaced" = "false" ]; then
+          printf '%s\n' "$MARKER_BEGIN" >> "$tmp"
+          cat >> "$tmp" <<'FLOCK_CLAUDEMD'
+# Harnest — Flock Pipeline Run
+
+A flock pipeline is ready. The `flock-conductor` agent has been generated with the full execution plan.
+
+**Start the flock conductor agent immediately.** Do not create teams or spawn agents yourself — the conductor handles everything.
+
+Read `flock.yaml` only if you need context, but defer all orchestration to the conductor.
+FLOCK_CLAUDEMD
+          printf '\n%s\n' "$MARKER_END" >> "$tmp"
+          replaced=true
+        fi
+        continue
+      fi
+      if [ "$line" = "$MARKER_END" ]; then
+        in_section=false
+        continue
+      fi
+      if [ "$in_section" = "false" ]; then
+        printf '%s\n' "$line" >> "$tmp"
+      fi
+    done < "CLAUDE.md"
+    mv "$tmp" "CLAUDE.md"
+    info "CLAUDE.md updated for flock run (replaced pipeline-creation workflow)"
+  fi
+
   FLOCK_SETUP_OK=1
 }
 
