@@ -675,10 +675,23 @@ cmd_flock_init() {
   cmd_hatch --chick flock "$@"
 
   echo ""
+
+  # Prompt user for their flock description
+  printf "What would you like your flock pipeline to do?\n> "
+  local user_input
+  read -r user_input
+
+  local base_prompt="Follow the flock pipeline creation workflow in CLAUDE.md. Start by reading harnest.yaml, then create the team and spawn the interviewer agent."
+
+  if [ -n "$user_input" ]; then
+    base_prompt="$base_prompt The user wants to create a flock pipeline based on this input: $user_input"
+  fi
+
+  echo ""
   echo "Launching Claude to generate your flock.yaml interactively..."
   echo "(When done, run: harnest flock run)"
   echo ""
-  claude || true
+  claude "$base_prompt" || true
 }
 
 # Shared setup: validate, hatch agents, generate conductor. Does NOT launch claude.
