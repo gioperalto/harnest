@@ -29,8 +29,12 @@ import sys
 nest_dir = sys.argv[1]
 registry = {'version': 1, 'chicks': {}}
 
-for chick_name in sorted(os.listdir(nest_dir)):
-    chick_path = os.path.join(nest_dir, chick_name)
+for subdir in ('public', 'internal'):
+  subdir_path = os.path.join(nest_dir, subdir)
+  if not os.path.isdir(subdir_path):
+      continue
+  for chick_name in sorted(os.listdir(subdir_path)):
+    chick_path = os.path.join(subdir_path, chick_name)
     if not os.path.isdir(chick_path):
         continue
 
@@ -81,6 +85,7 @@ for chick_name in sorted(os.listdir(nest_dir)):
         chick['agents'] = agents
 
     registry['chicks'][chick_name] = chick
+    registry['chicks'][chick_name]['visibility'] = subdir
 
 print(json.dumps(registry, indent=2, ensure_ascii=False))
 " "$NEST_DIR" > "$OUTPUT"

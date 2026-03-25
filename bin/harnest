@@ -55,6 +55,19 @@ fi
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+# Find a chick's filesystem directory by searching public/ and internal/ subdirs.
+# Returns 0 and prints the path on success, returns 1 if not found.
+_find_chick_dir() {
+  local name="$1"
+  for subdir in public internal; do
+    if [ -d "$NEST_DIR/$subdir/$name" ]; then
+      echo "$NEST_DIR/$subdir/$name"
+      return 0
+    fi
+  done
+  return 1
+}
+
 usage() {
   cat <<EOF
 harnest $VERSION — Composable Claude Code agent team harness
@@ -187,7 +200,7 @@ for rel_path, content in chick.get('files', {}).items():
 check_chick_exists() {
   local name="$1"
   if [ "$NEST_MODE" = "dir" ]; then
-    [ -d "$NEST_DIR/$name" ]
+    _find_chick_dir "$name" > /dev/null 2>&1
   elif [ "$NEST_MODE" = "registry" ]; then
     registry_chick_exists "$name"
   else
@@ -222,12 +235,12 @@ set_default_chick() {
 resolve_chick_dir() {
   local name="$1"
   if [ "$NEST_MODE" = "dir" ]; then
-    local chick_dir="$NEST_DIR/$name"
-    if [ ! -d "$chick_dir" ]; then
+    local chick_dir
+    chick_dir="$(_find_chick_dir "$name")" || {
       echo "Error: Chick '$name' not found." >&2
       cmd_nest >&2
       exit 1
-    fi
+    }
     echo "$chick_dir"
   elif [ "$NEST_MODE" = "registry" ]; then
     if ! registry_chick_exists "$name"; then
@@ -402,15 +415,20 @@ _nest_list() {
   echo "Available chicks:"
 
   if [ "$NEST_MODE" = "dir" ]; then
-    for dir in "$NEST_DIR"/*/; do
-      [ -d "$dir" ] || continue
-      local name
-      name="$(basename "$dir")"
-      if [ "$name" = "$default_chick" ]; then
-        echo "  $name (default)"
-      else
-        echo "  $name"
-      fi
+    for subdir in public internal; do
+      [ -d "$NEST_DIR/$subdir" ] || continue
+      echo ""
+      echo "  $subdir:"
+      for dir in "$NEST_DIR/$subdir"/*/; do
+        [ -d "$dir" ] || continue
+        local name
+        name="$(basename "$dir")"
+        if [ "$name" = "$default_chick" ]; then
+          echo "    $name (default)"
+        else
+          echo "    $name"
+        fi
+      done
     done
   elif [ "$NEST_MODE" = "registry" ]; then
     while IFS= read -r name; do
@@ -458,7 +476,8 @@ _nest_show() {
       echo "  $fpath"
     done
   else
-    local chick_dir="$NEST_DIR/$name"
+    local chick_dir
+    chick_dir="$(_find_chick_dir "$name")"
     if [ -f "$chick_dir/README.md" ]; then
       head -5 "$chick_dir/README.md"
       echo ""
@@ -504,8 +523,10 @@ _nest_export() {
   if [ "$NEST_MODE" = "registry" ]; then
     registry_export_chick "$name" "$dest_dir" > /dev/null
   else
+    local chick_dir
+    chick_dir="$(_find_chick_dir "$name")"
     mkdir -p "$dest_dir"
-    cp -R "$NEST_DIR/$name/" "$dest_dir/"
+    cp -R "$chick_dir/" "$dest_dir/"
   fi
 
   info "exported to $dest_dir"

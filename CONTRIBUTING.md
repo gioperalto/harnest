@@ -32,12 +32,17 @@ When writing code, docs, or error messages, prefer this vocabulary over "templat
 
 ## Creating a New Chick
 
-Chicks live in the `nest/` directory. Each chick is a self-contained directory with everything `harnest hatch` needs to scaffold into a project.
+Chicks live in the `nest/` directory, organized into subdirectories by visibility:
+
+- **`nest/public/`** — User-facing chicks for project workflows (e.g., `fullstack`, `webpage`)
+- **`nest/internal/`** — Meta chicks for harnest development and tooling (e.g., `canary`, `flock`, `improver`)
+
+Each chick is a self-contained directory with everything `harnest hatch` needs to scaffold into a project.
 
 ### Chick Structure
 
 ```
-nest/<chick-name>/
+nest/{public|internal}/<chick-name>/
   harnest.yaml                      # Team config (required)
   CLAUDE.md                         # Claude Code instructions (required)
   README.md                         # Chick documentation (required)
@@ -72,7 +77,9 @@ nest/<chick-name>/
 
 ```
 bin/harnest       CLI entrypoint (bash)
-nest/             Chick directories scaffolded by `harnest hatch`
+nest/
+  public/         User-facing chicks scaffolded by `harnest hatch`
+  internal/       Meta chicks for harnest development and tooling
 ```
 
 ## Code Style
