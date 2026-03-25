@@ -98,9 +98,10 @@ features:
       and orchestrates sequential or autonomous multi-chick runs with clean temp-file
       lifecycle management.
     scores:
-      # harnest flock init should launch a claude session in addition to hatching, instead it prompts the user
-      # this feature needs a lot of TLC to be considered usable and not just functional
-      functionality: 1
+      # flock init now auto-launches a claude session after hatching (patch/flock-init-auto-launch)
+      # previously: harnest flock init hatched files but exited, requiring manual 'claude' run
+      # still needs TLC for full end-to-end reliability, but core init workflow now completes
+      functionality: 3
 
       # Pure shell orchestration — no agent spawned for pipeline coordination itself.
       # Cost is entirely determined by the chicks it runs, not flock overhead.
@@ -125,8 +126,8 @@ features:
       usage: null  # update with real data
 
       # Execution side delivers clear value — zero manual chaining once flock.yaml exists.
-      # Init step undermines this: overkill agents, unnecessary prompt loops before work begins.
-      value: 6
+      # flock init now auto-launches claude, reducing friction in the init → flock.yaml step.
+      value: 7
 
 chicks:
 
