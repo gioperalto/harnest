@@ -633,9 +633,12 @@ cmd_flock_validate() {
   fi
 
   if [ "$NEST_MODE" = "registry" ]; then
-    python3 "$LIB_DIR/validate-flock.py" "$flock_file" --registry "$REGISTRY_FILE" "${extra_args[@]}"
+    python3 "$LIB_DIR/validate-flock.py" "$flock_file" --registry "$REGISTRY_FILE" ${extra_args[@]+"${extra_args[@]}"}
+  elif [ "$NEST_MODE" = "dir" ]; then
+    python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$NEST_DIR" ${extra_args[@]+"${extra_args[@]}"}
   else
-    python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$NEST_DIR" "${extra_args[@]}"
+    echo "Error: No nest directory or registry found. Is harnest installed correctly?" >&2
+    exit 1
   fi
 }
 
