@@ -22,6 +22,8 @@ Harnest speaks in birds.
 | `harnest hatch --chick fullstack` | Hatch with a specific chick (one-time) |
 | `harnest --chick fullstack` | Set the global default chick |
 | `harnest nest` | List available chicks |
+| `harnest nest show <name>` | Show chick details (agents, files) |
+| `harnest nest export <name>` | Export chick files to a directory |
 | `harnest flock [run]` | Run a flock pipeline (interactive) |
 | `harnest flock --auto` | Run a flock pipeline autonomously |
 | `harnest flock validate` | Validate a flock.yaml file |
@@ -88,6 +90,16 @@ harnest --chick fullstack
 harnest nest
 ```
 
+**Show chick details:**
+```bash
+harnest nest show fullstack
+```
+
+**Export a chick to inspect or customize:**
+```bash
+harnest nest export fullstack --dir ./my-fullstack
+```
+
 **Hatch with a specific chick (one-time override):**
 ```bash
 harnest hatch --chick fullstack
@@ -106,6 +118,22 @@ The global default is stored in `~/.config/harnest/config` and used by `harnest 
 | [`canary`](nest/canary/) | Validator + Observer. Dogfood other chicks end-to-end — validate setup, workflow execution, and clean termination with Claude Code OTel observability. Supports local Jaeger or Datadog. |
 
 See the [nest/](nest/) directory for full documentation on each chick.
+
+## How Chick Data is Bundled
+
+Harnest embeds all chick definitions in a single `lib/nest-registry.json` file, generated at release time by `scripts/pack-nest.sh`. This means:
+
+- **No repo clone required.** Homebrew users get all chick data bundled in the install — `harnest hatch`, `harnest nest`, and `harnest flock` work without the source repository on disk.
+- **No network required.** All chick data is local. There are no GitHub fetches or remote dependencies at runtime.
+- **Local dev works too.** If a `nest/` directory exists (i.e., you cloned the repo), harnest uses it directly. The registry is a fallback for production installs where `nest/` is absent.
+
+Resolution order: `nest/` directory (filesystem) > `lib/nest-registry.json` (embedded registry).
+
+**Rebuilding the registry** (contributors only):
+```bash
+./scripts/pack-nest.sh
+```
+This serializes the entire `nest/` tree into `lib/nest-registry.json`. The Homebrew formula runs this automatically during build.
 
 ## Flock — Multi-Chick Pipelines
 

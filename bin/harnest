@@ -13,9 +13,32 @@ SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_PATH")" && pwd)"
 # Homebrew layout: share/harnest/nest/...  Local dev: nest/...
 if [ -d "$SCRIPT_DIR/../share/harnest/nest" ]; then
   SHARE_DIR="$SCRIPT_DIR/../share/harnest"
+elif [ -d "$SCRIPT_DIR/../nest" ]; then
+  SHARE_DIR="$SCRIPT_DIR/.."
 else
   SHARE_DIR="$SCRIPT_DIR/.."
 fi
+
+# Resolve lib directory (Homebrew or local dev)
+if [ -d "$SCRIPT_DIR/../share/harnest/lib" ]; then
+  LIB_DIR="$SCRIPT_DIR/../share/harnest/lib"
+else
+  LIB_DIR="$SCRIPT_DIR/../lib"
+fi
+
+# ── Nest mode detection ─────────────────────────────────────────────────────
+# Prefer filesystem nest/ dir (local dev). Fall back to embedded registry (Homebrew).
+NEST_DIR="$SHARE_DIR/nest"
+REGISTRY_FILE="$LIB_DIR/nest-registry.json"
+
+if [ -d "$NEST_DIR" ]; then
+  NEST_MODE="dir"
+elif [ -f "$REGISTRY_FILE" ]; then
+  NEST_MODE="registry"
+else
+  NEST_MODE="none"
+fi
+
 VERSION_FILE="$SCRIPT_DIR/../VERSION"
 
 # Global config
@@ -39,6 +62,8 @@ harnest $VERSION — Composable Claude Code agent team harness
 Usage:
   harnest hatch [--chick <name>] [--force]   Scaffold a nest into the current project
   harnest nest                               List available chicks
+  harnest nest show <name>                   Show chick details (agents, files)
+  harnest nest export <name> [--dir <path>]  Export chick files to a directory
   harnest flock [run] [--file <path>]        Run a flock pipeline (interactive)
   harnest flock --auto [--file <path>]       Run a flock pipeline autonomously
   harnest flock validate [--file <path>]     Validate a flock.yaml file
@@ -60,6 +85,116 @@ skip()  { printf '  \033[33m⊘\033[0m %s (already exists, use --force to overwr
 warn()  { printf '  \033[33m!\033[0m %s\n' "$1"; }
 merge() { printf '  \033[36m⇄\033[0m %s\n' "$1"; }
 
+# ── Registry helpers ─────────────────────────────────────────────────────────
+# These functions read from lib/nest-registry.json when the nest/ dir is absent.
+
+registry_list_chicks() {
+  python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+for name in sorted(reg['chicks']):
+    print(name)
+" "$REGISTRY_FILE"
+}
+
+registry_chick_exists() {
+  python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+sys.exit(0 if sys.argv[2] in reg['chicks'] else 1)
+" "$REGISTRY_FILE" "$1"
+}
+
+registry_chick_description() {
+  python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+chick = reg['chicks'].get(sys.argv[2], {})
+print(chick.get('description', ''))
+" "$REGISTRY_FILE" "$1"
+}
+
+registry_chick_agents() {
+  python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+chick = reg['chicks'].get(sys.argv[2], {})
+for a in chick.get('agents', []):
+    print(a)
+" "$REGISTRY_FILE" "$1"
+}
+
+registry_list_files() {
+  local chick_name="$1"
+  local prefix="${2:-}"
+  python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+chick = reg['chicks'].get(sys.argv[2], {})
+prefix = sys.argv[3] if len(sys.argv) > 3 else ''
+for path in sorted(chick.get('files', {})):
+    if not prefix or path.startswith(prefix):
+        print(path)
+" "$REGISTRY_FILE" "$chick_name" "$prefix"
+}
+
+registry_extract_file() {
+  local chick_name="$1" rel_path="$2"
+  python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+chick = reg['chicks'].get(sys.argv[2], {})
+content = chick.get('files', {}).get(sys.argv[3])
+if content is None:
+    sys.exit(1)
+sys.stdout.write(content)
+" "$REGISTRY_FILE" "$chick_name" "$rel_path"
+}
+
+# Export an entire chick from the registry to a temp directory.
+# Returns the temp dir path via stdout. Caller should clean up.
+registry_export_chick() {
+  local chick_name="$1"
+  local dest_dir="${2:-}"
+  if [ -z "$dest_dir" ]; then
+    dest_dir="$(mktemp -d "${TMPDIR:-/tmp}/harnest-${chick_name}-XXXXXX")"
+  fi
+  python3 -c "
+import json, os, sys
+with open(sys.argv[1]) as f:
+    reg = json.load(f)
+chick = reg['chicks'].get(sys.argv[2])
+if not chick:
+    print(f'Error: chick \"{sys.argv[2]}\" not found in registry', file=sys.stderr)
+    sys.exit(1)
+dest = sys.argv[3]
+for rel_path, content in chick.get('files', {}).items():
+    full_path = os.path.join(dest, rel_path)
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    with open(full_path, 'w') as f:
+        f.write(content)
+" "$REGISTRY_FILE" "$chick_name" "$dest_dir"
+  echo "$dest_dir"
+}
+
+# Ensure a chick exists in either filesystem or registry
+check_chick_exists() {
+  local name="$1"
+  if [ "$NEST_MODE" = "dir" ]; then
+    [ -d "$NEST_DIR/$name" ]
+  elif [ "$NEST_MODE" = "registry" ]; then
+    registry_chick_exists "$name"
+  else
+    return 1
+  fi
+}
+
 get_default_chick() {
   if [ -f "$HARNEST_CONFIG" ]; then
     local chick
@@ -74,8 +209,7 @@ get_default_chick() {
 
 set_default_chick() {
   local name="$1"
-  local chick_dir="$SHARE_DIR/nest/$name"
-  if [ ! -d "$chick_dir" ]; then
+  if ! check_chick_exists "$name"; then
     echo "Error: Chick '$name' not found." >&2
     cmd_nest >&2
     exit 1
@@ -87,14 +221,41 @@ set_default_chick() {
 
 resolve_chick_dir() {
   local name="$1"
-  local chick_dir="$SHARE_DIR/nest/$name"
-  if [ ! -d "$chick_dir" ]; then
-    echo "Error: Chick '$name' not found." >&2
-    cmd_nest >&2
+  if [ "$NEST_MODE" = "dir" ]; then
+    local chick_dir="$NEST_DIR/$name"
+    if [ ! -d "$chick_dir" ]; then
+      echo "Error: Chick '$name' not found." >&2
+      cmd_nest >&2
+      exit 1
+    fi
+    echo "$chick_dir"
+  elif [ "$NEST_MODE" = "registry" ]; then
+    if ! registry_chick_exists "$name"; then
+      echo "Error: Chick '$name' not found." >&2
+      cmd_nest >&2
+      exit 1
+    fi
+    # Export chick from registry to a temp dir (cleaned up on exit)
+    local tmp_dir
+    tmp_dir="$(registry_export_chick "$name")"
+    _HARNEST_TMPDIR_CLEANUP+=("$tmp_dir")
+    echo "$tmp_dir"
+  else
+    echo "Error: No nest directory or registry found. Is harnest installed correctly?" >&2
     exit 1
   fi
-  echo "$chick_dir"
 }
+
+# Track temp dirs for cleanup
+_HARNEST_TMPDIR_CLEANUP=()
+_harnest_cleanup() {
+  if [ "${#_HARNEST_TMPDIR_CLEANUP[@]}" -gt 0 ]; then
+    for d in "${_HARNEST_TMPDIR_CLEANUP[@]}"; do
+      [ -d "$d" ] && rm -rf "$d"
+    done
+  fi
+}
+trap _harnest_cleanup EXIT
 
 # Copy a file from chick dir to a destination, respecting --force
 copy_file() {
@@ -226,25 +387,128 @@ print(json.dumps(merged, indent=2))
 # ── Nest command ─────────────────────────────────────────────────────────────
 
 cmd_nest() {
-  local nest_dir="$SHARE_DIR/nest"
-  if [ ! -d "$nest_dir" ]; then
-    echo "Error: Nest directory not found at $nest_dir" >&2
-    echo "Is harnest installed correctly?" >&2
-    exit 1
-  fi
+  local subcmd="${1:-list}"
+  case "$subcmd" in
+    list)  _nest_list ;;
+    show)  shift; _nest_show "$@" ;;
+    export) shift; _nest_export "$@" ;;
+    *)     _nest_list ;;
+  esac
+}
+
+_nest_list() {
   local default_chick
   default_chick="$(get_default_chick)"
   echo "Available chicks:"
-  for dir in "$nest_dir"/*/; do
-    [ -d "$dir" ] || continue
-    local name
-    name="$(basename "$dir")"
-    if [ "$name" = "$default_chick" ]; then
-      echo "  $name (default)"
-    else
-      echo "  $name"
+
+  if [ "$NEST_MODE" = "dir" ]; then
+    for dir in "$NEST_DIR"/*/; do
+      [ -d "$dir" ] || continue
+      local name
+      name="$(basename "$dir")"
+      if [ "$name" = "$default_chick" ]; then
+        echo "  $name (default)"
+      else
+        echo "  $name"
+      fi
+    done
+  elif [ "$NEST_MODE" = "registry" ]; then
+    while IFS= read -r name; do
+      if [ "$name" = "$default_chick" ]; then
+        echo "  $name (default)"
+      else
+        echo "  $name"
+      fi
+    done < <(registry_list_chicks)
+  else
+    echo "Error: No nest directory or registry found." >&2
+    echo "Is harnest installed correctly?" >&2
+    exit 1
+  fi
+}
+
+_nest_show() {
+  local name="${1:-}"
+  if [ -z "$name" ]; then
+    echo "Usage: harnest nest show <chick>" >&2
+    exit 1
+  fi
+  if ! check_chick_exists "$name"; then
+    echo "Error: Chick '$name' not found." >&2
+    exit 1
+  fi
+
+  echo "Chick: $name"
+  echo ""
+
+  if [ "$NEST_MODE" = "registry" ]; then
+    local desc
+    desc="$(registry_chick_description "$name")"
+    if [ -n "$desc" ]; then
+      echo "Description: $desc"
+      echo ""
     fi
+    echo "Agents:"
+    registry_chick_agents "$name" | while IFS= read -r agent; do
+      echo "  - $agent"
+    done
+    echo ""
+    echo "Files:"
+    registry_list_files "$name" | while IFS= read -r fpath; do
+      echo "  $fpath"
+    done
+  else
+    local chick_dir="$NEST_DIR/$name"
+    if [ -f "$chick_dir/README.md" ]; then
+      head -5 "$chick_dir/README.md"
+      echo ""
+    fi
+    echo "Agents:"
+    for agent in "$chick_dir"/claude/agents/*.md; do
+      [ -f "$agent" ] || continue
+      echo "  - $(basename "$agent" .md)"
+    done
+    echo ""
+    echo "Files:"
+    (cd "$chick_dir" && find . -type f | sort | sed 's|^\./|  |')
+  fi
+}
+
+_nest_export() {
+  local name="" dest_dir=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dir)
+        if [ $# -lt 2 ]; then echo "Error: --dir requires a value"; exit 1; fi
+        dest_dir="$2"; shift 2 ;;
+      *) name="$1"; shift ;;
+    esac
   done
+
+  if [ -z "$name" ]; then
+    echo "Usage: harnest nest export <chick> [--dir <path>]" >&2
+    exit 1
+  fi
+  if ! check_chick_exists "$name"; then
+    echo "Error: Chick '$name' not found." >&2
+    exit 1
+  fi
+
+  if [ -z "$dest_dir" ]; then
+    dest_dir="./$name"
+  fi
+
+  echo "Exporting chick '$name' to $dest_dir..."
+  echo ""
+
+  if [ "$NEST_MODE" = "registry" ]; then
+    registry_export_chick "$name" "$dest_dir" > /dev/null
+  else
+    mkdir -p "$dest_dir"
+    cp -R "$NEST_DIR/$name/" "$dest_dir/"
+  fi
+
+  info "exported to $dest_dir"
 }
 
 # ── Hatch command ─────────────────────────────────────────────────────────────
@@ -329,13 +593,6 @@ cmd_hatch() {
 
 # ── Flock commands ───────────────────────────────────────────────────────────
 
-# Resolve lib directory (Homebrew or local dev)
-if [ -d "$SCRIPT_DIR/../share/harnest/lib" ]; then
-  LIB_DIR="$SCRIPT_DIR/../share/harnest/lib"
-else
-  LIB_DIR="$SCRIPT_DIR/../lib"
-fi
-
 flock_usage() {
   cat <<EOF
 harnest flock — Chain multiple chicks into a pipeline
@@ -354,16 +611,17 @@ EOF
 
 cmd_flock_validate() {
   local flock_file="flock.yaml"
+  local extra_args=()
   while [ $# -gt 0 ]; do
     case "$1" in
       --file)
         if [ $# -lt 2 ]; then echo "Error: --file requires a value"; exit 1; fi
         flock_file="$2"; shift 2 ;;
+      --parse) extra_args+=("--parse"); shift ;;
       *) echo "Unknown option: $1"; exit 1 ;;
     esac
   done
 
-  local nest_dir="$SHARE_DIR/nest"
   if [ ! -f "$flock_file" ]; then
     echo "Error: $flock_file not found" >&2
     exit 1
@@ -373,7 +631,12 @@ cmd_flock_validate() {
     echo "Is harnest installed correctly?" >&2
     exit 1
   fi
-  python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$nest_dir"
+
+  if [ "$NEST_MODE" = "registry" ]; then
+    python3 "$LIB_DIR/validate-flock.py" "$flock_file" --registry "$REGISTRY_FILE" "${extra_args[@]}"
+  else
+    python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$NEST_DIR" "${extra_args[@]}"
+  fi
 }
 
 cmd_flock_init() {
@@ -392,7 +655,6 @@ cmd_flock_init() {
 # Sets FLOCK_SETUP_OK=1 on success.
 _flock_setup() {
   local flock_file="$1"
-  local nest_dir="$SHARE_DIR/nest"
   FLOCK_SETUP_OK=0
 
   # Validate
@@ -411,7 +673,7 @@ _flock_setup() {
 
   # Extract chick aliases and their nest chick names using the validator's --parse mode
   local chick_map
-  chick_map="$(python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$nest_dir" --parse | python3 -c "
+  chick_map="$(cmd_flock_validate --file "$flock_file" --parse | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 chicks = data.get('chicks', {})
@@ -428,9 +690,12 @@ for alias, cfg in chicks.items():
   echo "Preparing flock agents..."
   echo ""
 
-  # Hatch namespaced agents from each referenced chick
+  # Hatch namespaced agents from each referenced chick.
+  # resolve_chick_dir handles both filesystem and registry modes.
   while IFS='=' read -r alias chick_name; do
-    local src_dir="$nest_dir/$chick_name"
+    local src_dir
+    src_dir="$(resolve_chick_dir "$chick_name")"
+
     if [ ! -d "$src_dir/claude/agents" ]; then
       warn "chick '$chick_name' has no agents directory"
       continue
@@ -465,8 +730,9 @@ for alias, cfg in chicks.items():
     # Append the agent mapping
     printf '%s\n\n' '## Agent Mapping' >> "$conductor_file"
     while IFS='=' read -r alias chick_name; do
+      local src_dir
+      src_dir="$(resolve_chick_dir "$chick_name")"
       printf -- '- **%s** (%s): ' "$alias" "$chick_name" >> "$conductor_file"
-      local src_dir="$nest_dir/$chick_name"
       for agent_file in "$src_dir"/claude/agents/*.md; do
         [ -f "$agent_file" ] || continue
         local agent_basename
@@ -528,8 +794,6 @@ cmd_flock_auto() {
     esac
   done
 
-  local nest_dir="$SHARE_DIR/nest"
-
   # Step 1: Validate
   echo "Preflight check..."
   echo ""
@@ -550,7 +814,7 @@ cmd_flock_auto() {
   echo ""
 
   # Extract and display execution plan for user review
-  python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$nest_dir" --parse | python3 -c "
+  cmd_flock_validate --file "$flock_file" --parse | python3 -c "
 import sys, json
 
 data = json.load(sys.stdin)
@@ -649,7 +913,7 @@ cmd_flock() {
 
 case "${1:-help}" in
   hatch)      shift; cmd_hatch "$@" ;;
-  nest)       cmd_nest ;;
+  nest)       shift; cmd_nest "$@" ;;
   flock)      shift; cmd_flock "$@" ;;
   --chick)
     if [ $# -lt 2 ]; then

@@ -223,7 +223,22 @@ def topological_sort(aliases, depends_on_map):
 
 # ── Main validation logic ────────────────────────────────────────────────────
 
-def validate(flock_file, nest_dir):
+def get_available_chicks(nest_dir=None, registry_file=None):
+    """Get the set of available chick names from either a nest dir or a registry file."""
+    available = set()
+    if registry_file and os.path.isfile(registry_file):
+        import json as _json
+        with open(registry_file) as f:
+            reg = _json.load(f)
+        available = set(reg.get("chicks", {}).keys())
+    elif nest_dir and os.path.isdir(nest_dir):
+        for entry in os.listdir(nest_dir):
+            if os.path.isdir(os.path.join(nest_dir, entry)):
+                available.add(entry)
+    return available
+
+
+def validate(flock_file, nest_dir=None, registry_file=None):
     """Validate a flock.yaml file. Returns (success, messages)."""
     errors = []
     warnings = []
@@ -243,12 +258,8 @@ def validate(flock_file, nest_dir):
         errors.append("chicks section is empty — define at least one chick")
         return False, [("error", e) for e in errors]
 
-    # 3. Get available nest chicks
-    available_chicks = set()
-    if os.path.isdir(nest_dir):
-        for entry in os.listdir(nest_dir):
-            if os.path.isdir(os.path.join(nest_dir, entry)):
-                available_chicks.add(entry)
+    # 3. Get available nest chicks (from dir or registry)
+    available_chicks = get_available_chicks(nest_dir=nest_dir, registry_file=registry_file)
 
     # 4. Validate each chick entry
     aliases = list(chicks.keys())
@@ -375,13 +386,44 @@ def validate(flock_file, nest_dir):
 def main():
     import json as json_mod
 
-    if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} <flock-file> <nest-dir> [--parse]", file=sys.stderr)
+    if len(sys.argv) < 2:
+        print(
+            f"Usage: {sys.argv[0]} <flock-file> [<nest-dir>] [--registry <file>] [--parse]",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     flock_file = sys.argv[1]
-    nest_dir = sys.argv[2]
-    parse_mode = "--parse" in sys.argv
+    nest_dir = None
+    registry_file = None
+    parse_mode = False
+
+    # Parse remaining args
+    i = 2
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "--registry":
+            if i + 1 >= len(sys.argv):
+                print("Error: --registry requires a file path", file=sys.stderr)
+                sys.exit(2)
+            registry_file = sys.argv[i + 1]
+            i += 2
+        elif arg == "--parse":
+            parse_mode = True
+            i += 1
+        elif not arg.startswith("--"):
+            nest_dir = arg
+            i += 1
+        else:
+            print(f"Unknown option: {arg}", file=sys.stderr)
+            sys.exit(2)
+
+    if not nest_dir and not registry_file:
+        print(
+            f"Usage: {sys.argv[0]} <flock-file> <nest-dir> | --registry <file> [--parse]",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     if parse_mode:
         # Output parsed data as JSON for consumption by other tools
@@ -394,7 +436,7 @@ def main():
 
     print("Validating flock.yaml...\n")
 
-    success, messages = validate(flock_file, nest_dir)
+    success, messages = validate(flock_file, nest_dir=nest_dir, registry_file=registry_file)
 
     for msg_type, msg in messages:
         if msg_type == "info":
