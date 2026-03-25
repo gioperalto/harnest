@@ -24,7 +24,7 @@
   "mcpServers": {
     "mermaid": {
       "command": "npx",
-      "args": ["-y", "@mermaid-js/mcp@latest"],
+      "args": ["-y", "mermaid-mcp-server@1.0.8"],
       "disabled": false,
       "_comment": "Mermaid MCP - used by synthesizer to generate mind maps and cluster diagrams. No credentials required."
     }

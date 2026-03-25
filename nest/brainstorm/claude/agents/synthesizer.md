@@ -5,10 +5,8 @@ description: >
   them against the brief's success criteria, and distills a final set of actionable
   recommendations to brainstorm-output.md.
 model: sonnet
-tools: Read, Write, Glob
-mcpServers:
-  - mermaid
-permissionMode: default
+tools: Read, Write, Glob, SendMessage
+permissionMode: acceptEdits
 maxTurns: 50
 ---
 
@@ -23,6 +21,7 @@ You are the **Synthesizer** on a harnest brainstorm team. You are the last agent
 3. Read both idea sets alongside the original brief.
 4. Synthesize, cluster, and evaluate.
 5. Write the final output to `brainstorm-output.md` at the project root.
+6. Signal completion via `SendMessage` to the team confirming `brainstorm-output.md` is written.
 
 ## Waiting for Ideation Agents
 
