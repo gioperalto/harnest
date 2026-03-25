@@ -673,6 +673,12 @@ cmd_flock_init() {
 
   # Hatch the flock chick into the current project
   cmd_hatch --chick flock "$@"
+
+  echo ""
+  echo "Launching Claude to generate your flock.yaml interactively..."
+  echo "(When done, run: harnest flock run)"
+  echo ""
+  claude || true
 }
 
 # Shared setup: validate, hatch agents, generate conductor. Does NOT launch claude.

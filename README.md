@@ -155,7 +155,7 @@ A flock chains multiple chicks into a sequential pipeline — like Docker Compos
 ```bash
 harnest flock init
 ```
-This hatches the [`flock`](nest/flock/) meta-chick, which interviews you about your workflow and generates a `flock.yaml`.
+This hatches the [`flock`](nest/flock/) meta-chick and launches a Claude session that interviews you about your workflow and generates a `flock.yaml`.
 
 **Example `flock.yaml`:**
 ```yaml
