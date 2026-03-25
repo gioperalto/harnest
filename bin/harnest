@@ -720,8 +720,10 @@ for alias, cfg in chicks.items():
   echo "Preparing flock agents..."
   echo ""
 
-  # Hatch namespaced agents from each referenced chick.
-  # resolve_chick_dir handles both filesystem and registry modes.
+  # Hatch namespaced agents from each referenced chick and build the conductor
+  # agent-mapping string in a single pass. resolve_chick_dir is called once per
+  # chick (not twice), avoiding redundant temp-dir exports in registry mode.
+  local agent_mapping=""
   while IFS='=' read -r alias chick_name; do
     local src_dir
     src_dir="$(resolve_chick_dir "$chick_name")"
@@ -730,6 +732,7 @@ for alias, cfg in chicks.items():
       warn "chick '$chick_name' has no agents directory"
       continue
     fi
+    local mapping_line="- **${alias}** (${chick_name}): "
     for agent_file in "$src_dir"/claude/agents/*.md; do
       [ -f "$agent_file" ] || continue
       local agent_basename
@@ -737,7 +740,9 @@ for alias, cfg in chicks.items():
       local namespaced="flock-${alias}-${agent_basename}"
       cp "$agent_file" ".claude/agents/$namespaced"
       info "hatched agent: $namespaced"
+      mapping_line="${mapping_line}\`flock-${alias}-${agent_basename}\` "
     done
+    agent_mapping="${agent_mapping}${mapping_line}"$'\n'
 
     # Merge settings from each chick
     if [ -f "$src_dir/claude/settings.json" ]; then
@@ -757,20 +762,9 @@ for alias, cfg in chicks.items():
     # Append the flock.yaml contents as context
     printf '\n## Flock Configuration (flock.yaml)\n\n```yaml\n%s\n```\n' "$flock_contents" >> "$conductor_file"
 
-    # Append the agent mapping
+    # Append the agent mapping (pre-built during the hatching loop above)
     printf '%s\n\n' '## Agent Mapping' >> "$conductor_file"
-    while IFS='=' read -r alias chick_name; do
-      local src_dir
-      src_dir="$(resolve_chick_dir "$chick_name")"
-      printf -- '- **%s** (%s): ' "$alias" "$chick_name" >> "$conductor_file"
-      for agent_file in "$src_dir"/claude/agents/*.md; do
-        [ -f "$agent_file" ] || continue
-        local agent_basename
-        agent_basename="$(basename "$agent_file")"
-        printf -- '`flock-%s-%s` ' "$alias" "$agent_basename" >> "$conductor_file"
-      done
-      printf '\n' >> "$conductor_file"
-    done <<< "$chick_map"
+    printf '%s' "$agent_mapping" >> "$conductor_file"
 
     info "generated conductor agent: $conductor_file"
   else
