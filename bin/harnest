@@ -388,29 +388,24 @@ cmd_flock_init() {
   cmd_hatch --chick flock "$@"
 }
 
-cmd_flock_run() {
-  local flock_file="flock.yaml"
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --file)
-        if [ $# -lt 2 ]; then echo "Error: --file requires a value"; exit 1; fi
-        flock_file="$2"; shift 2 ;;
-      *) echo "Unknown option: $1"; exit 1 ;;
-    esac
-  done
+# Shared setup: validate, hatch agents, generate conductor. Does NOT launch claude.
+# Sets FLOCK_SETUP_OK=1 on success.
+_flock_setup() {
+  local flock_file="$1"
+  local nest_dir="$SHARE_DIR/nest"
+  FLOCK_SETUP_OK=0
 
-  # Step 1: Validate
+  # Validate
   echo "Preflight check..."
   echo ""
   if ! cmd_flock_validate --file "$flock_file"; then
     echo ""
     echo "Fix the errors above before running the flock." >&2
-    exit 1
+    return 1
   fi
   echo ""
 
-  # Step 2: Read chick references from flock.yaml and hatch agents
-  local nest_dir="$SHARE_DIR/nest"
+  # Read chick references from flock.yaml and hatch agents
   mkdir -p ".claude/agents"
   mkdir -p ".flock"
 
@@ -427,16 +422,14 @@ for alias, cfg in chicks.items():
 
   if [ -z "$chick_map" ]; then
     echo "Error: could not parse chick mappings from $flock_file" >&2
-    exit 1
+    return 1
   fi
 
   echo "Preparing flock agents..."
   echo ""
 
-  # Step 3: Hatch namespaced agents from each referenced chick
-  local all_chick_names=""
+  # Hatch namespaced agents from each referenced chick
   while IFS='=' read -r alias chick_name; do
-    all_chick_names="$all_chick_names $chick_name"
     local src_dir="$nest_dir/$chick_name"
     if [ ! -d "$src_dir/claude/agents" ]; then
       warn "chick '$chick_name' has no agents directory"
@@ -457,7 +450,7 @@ for alias, cfg in chicks.items():
     fi
   done <<< "$chick_map"
 
-  # Step 4: Generate the conductor agent from template
+  # Generate the conductor agent from template
   if [ -f "$LIB_DIR/flock-conductor-template.md" ]; then
     local conductor_file=".claude/agents/flock-conductor.md"
     local flock_contents
@@ -486,20 +479,42 @@ for alias, cfg in chicks.items():
     info "generated conductor agent: $conductor_file"
   else
     echo "Error: conductor template not found at $LIB_DIR/flock-conductor-template.md" >&2
-    exit 1
+    return 1
   fi
 
-  # Step 5: Copy flock.yaml to project root if not already there
+  # Copy flock.yaml to project root if not already there
   if [ "$(realpath "$flock_file" 2>/dev/null)" != "$(realpath ./flock.yaml 2>/dev/null)" ]; then
     cp "$flock_file" "./flock.yaml"
     info "copied flock.yaml to project root"
   fi
 
+  FLOCK_SETUP_OK=1
+}
+
+cmd_flock_run() {
+  local flock_file="flock.yaml"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --file)
+        if [ $# -lt 2 ]; then echo "Error: --file requires a value"; exit 1; fi
+        flock_file="$2"; shift 2 ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  _flock_setup "$flock_file" || exit 1
+
   echo ""
-  echo "Flock is ready! Next steps:"
-  echo "  1. Run 'claude' to start the flock session"
-  echo "  2. The flock conductor will orchestrate the pipeline automatically"
+  echo "Launching flock conductor..."
   echo ""
+
+  # Launch claude — the conductor agent takes over
+  claude || true
+
+  # Cleanup after claude session exits
+  echo ""
+  echo "Flock session ended. Cleaning up..."
+  cmd_flock_clean
 }
 
 cmd_flock_auto() {
@@ -513,6 +528,8 @@ cmd_flock_auto() {
     esac
   done
 
+  local nest_dir="$SHARE_DIR/nest"
+
   # Step 1: Validate
   echo "Preflight check..."
   echo ""
@@ -522,8 +539,6 @@ cmd_flock_auto() {
     exit 1
   fi
   echo ""
-
-  local nest_dir="$SHARE_DIR/nest"
 
   # Step 2: Pre-flight interview — ask clarifying questions before autonomous execution
   echo "┌─────────────────────────────────────────────────────────────┐"
@@ -573,16 +588,22 @@ print(f'Global timeout: {timeout} min')
   fi
   echo ""
 
-  # Step 3: Set up the flock (reuse cmd_flock_run setup)
-  cmd_flock_run --file "$flock_file"
+  # Step 3: Set up the flock
+  _flock_setup "$flock_file" || exit 1
+
+  mkdir -p ".flock/logs"
 
   echo ""
-  echo "Auto mode setup complete."
-  echo "To run autonomously, launch claude with the conductor agent:"
-  echo "  claude --agent-file .claude/agents/flock-conductor.md --dangerously-skip-permissions"
+  echo "Launching flock conductor in autonomous mode..."
   echo ""
-  echo "Logs will be written to .flock/logs/"
-  mkdir -p ".flock/logs"
+
+  # Step 4: Launch claude autonomously with bypassed permissions
+  claude --dangerously-skip-permissions || true
+
+  # Step 5: Cleanup after claude session exits
+  echo ""
+  echo "Flock auto session ended. Cleaning up..."
+  cmd_flock_clean
 }
 
 cmd_flock_clean() {
