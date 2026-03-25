@@ -1,0 +1,45 @@
+# harnest - Meta Flock Pipeline Creator
+# Drop this config + .claude/ directory into the harnest repo to enable flock pipeline creation.
+#
+# An interviewer gathers user requirements for multi-chick workflows. The composer
+# reads the brief, studies available chicks, and generates a valid flock.yaml pipeline.
+
+team:
+  name: flock
+  description: "Meta flock: helps users design and create flock.yaml pipelines"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Agent Definitions
+# Each agent has a role, model, count, and description.
+# Models: opus | sonnet | haiku
+# The agent_file references .claude/agents/<name>.md
+# ──────────────────────────────────────────────────────────────────────────────
+agents:
+  interviewer:
+    model: opus
+    count: 1
+    agent_file: interviewer.md
+    description: >
+      Interviews the user about their multi-step workflow goals, identifies
+      which chicks to chain, and writes a design brief for the composer.
+
+  composer:
+    model: sonnet
+    count: 1
+    agent_file: composer.md
+    description: >
+      Reads the design brief, available chick configs, and generates
+      a valid flock.yaml with correct dependencies and prompts.
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Workflow Configuration
+# ──────────────────────────────────────────────────────────────────────────────
+workflow:
+  # Interviewer must complete before composer starts
+  interviewer_first: true
+
+  # No worktrees — all agents work in the same directory
+  use_worktrees: false
+
+  # Branch prefix for any git work during flock creation
+  branch_prefix: "flock/"
