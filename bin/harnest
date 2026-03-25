@@ -39,6 +39,11 @@ harnest $VERSION — Composable Claude Code agent team harness
 Usage:
   harnest hatch [--chick <name>] [--force]   Scaffold a nest into the current project
   harnest nest                               List available chicks
+  harnest flock [run] [--file <path>]        Run a flock pipeline (interactive)
+  harnest flock --auto [--file <path>]       Run a flock pipeline autonomously
+  harnest flock validate [--file <path>]     Validate a flock.yaml file
+  harnest flock init                         Generate a flock.yaml interactively
+  harnest flock clean                        Remove temp flock agent files
   harnest --chick <name>                     Set the global default chick
   harnest help                               Show this help message
   harnest version                            Print version
@@ -46,6 +51,7 @@ Usage:
 Options:
   --chick <name>   Chick (nest template) to use (default: fullstack)
   --force          Overwrite existing files during hatch
+  --file <path>    Path to flock.yaml (default: ./flock.yaml)
 EOF
 }
 
@@ -321,11 +327,309 @@ cmd_hatch() {
   fi
 }
 
+# ── Flock commands ───────────────────────────────────────────────────────────
+
+# Resolve lib directory (Homebrew or local dev)
+if [ -d "$SCRIPT_DIR/../share/harnest/lib" ]; then
+  LIB_DIR="$SCRIPT_DIR/../share/harnest/lib"
+else
+  LIB_DIR="$SCRIPT_DIR/../lib"
+fi
+
+flock_usage() {
+  cat <<EOF
+harnest flock — Chain multiple chicks into a pipeline
+
+Usage:
+  harnest flock [run] [--file <path>]     Run a flock pipeline (interactive)
+  harnest flock --auto [--file <path>]    Run a flock pipeline autonomously
+  harnest flock validate [--file <path>]  Validate a flock.yaml file
+  harnest flock init                      Generate a flock.yaml interactively
+  harnest flock clean                     Remove temp flock agent files
+
+Options:
+  --file <path>   Path to flock.yaml (default: ./flock.yaml)
+EOF
+}
+
+cmd_flock_validate() {
+  local flock_file="flock.yaml"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --file)
+        if [ $# -lt 2 ]; then echo "Error: --file requires a value"; exit 1; fi
+        flock_file="$2"; shift 2 ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  local nest_dir="$SHARE_DIR/nest"
+  if [ ! -f "$flock_file" ]; then
+    echo "Error: $flock_file not found" >&2
+    exit 1
+  fi
+  if [ ! -f "$LIB_DIR/validate-flock.py" ]; then
+    echo "Error: validator not found at $LIB_DIR/validate-flock.py" >&2
+    echo "Is harnest installed correctly?" >&2
+    exit 1
+  fi
+  python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$nest_dir"
+}
+
+cmd_flock_init() {
+  local chick="flock"
+  local chick_dir
+  chick_dir="$(resolve_chick_dir "$chick")"
+
+  echo "Hatching flock meta-chick to help you create a flock.yaml..."
+  echo ""
+
+  # Hatch the flock chick into the current project
+  cmd_hatch --chick flock "$@"
+}
+
+cmd_flock_run() {
+  local flock_file="flock.yaml"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --file)
+        if [ $# -lt 2 ]; then echo "Error: --file requires a value"; exit 1; fi
+        flock_file="$2"; shift 2 ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  # Step 1: Validate
+  echo "Preflight check..."
+  echo ""
+  if ! cmd_flock_validate --file "$flock_file"; then
+    echo ""
+    echo "Fix the errors above before running the flock." >&2
+    exit 1
+  fi
+  echo ""
+
+  # Step 2: Read chick references from flock.yaml and hatch agents
+  local nest_dir="$SHARE_DIR/nest"
+  mkdir -p ".claude/agents"
+  mkdir -p ".flock"
+
+  # Extract chick aliases and their nest chick names using the validator's --parse mode
+  local chick_map
+  chick_map="$(python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$nest_dir" --parse | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+chicks = data.get('chicks', {})
+for alias, cfg in chicks.items():
+    if isinstance(cfg, dict) and 'chick' in cfg:
+        print(f'{alias}={cfg[\"chick\"]}')
+")"
+
+  if [ -z "$chick_map" ]; then
+    echo "Error: could not parse chick mappings from $flock_file" >&2
+    exit 1
+  fi
+
+  echo "Preparing flock agents..."
+  echo ""
+
+  # Step 3: Hatch namespaced agents from each referenced chick
+  local all_chick_names=""
+  while IFS='=' read -r alias chick_name; do
+    all_chick_names="$all_chick_names $chick_name"
+    local src_dir="$nest_dir/$chick_name"
+    if [ ! -d "$src_dir/claude/agents" ]; then
+      warn "chick '$chick_name' has no agents directory"
+      continue
+    fi
+    for agent_file in "$src_dir"/claude/agents/*.md; do
+      [ -f "$agent_file" ] || continue
+      local agent_basename
+      agent_basename="$(basename "$agent_file")"
+      local namespaced="flock-${alias}-${agent_basename}"
+      cp "$agent_file" ".claude/agents/$namespaced"
+      info "hatched agent: $namespaced"
+    done
+
+    # Merge settings from each chick
+    if [ -f "$src_dir/claude/settings.json" ]; then
+      merge_settings "$src_dir/claude/settings.json" ".claude/settings.json" "false"
+    fi
+  done <<< "$chick_map"
+
+  # Step 4: Generate the conductor agent from template
+  if [ -f "$LIB_DIR/flock-conductor-template.md" ]; then
+    local conductor_file=".claude/agents/flock-conductor.md"
+    local flock_contents
+    flock_contents="$(cat "$flock_file")"
+
+    # Copy conductor template
+    cp "$LIB_DIR/flock-conductor-template.md" "$conductor_file"
+
+    # Append the flock.yaml contents as context
+    printf '\n## Flock Configuration (flock.yaml)\n\n```yaml\n%s\n```\n' "$flock_contents" >> "$conductor_file"
+
+    # Append the agent mapping
+    printf '%s\n\n' '## Agent Mapping' >> "$conductor_file"
+    while IFS='=' read -r alias chick_name; do
+      printf -- '- **%s** (%s): ' "$alias" "$chick_name" >> "$conductor_file"
+      local src_dir="$nest_dir/$chick_name"
+      for agent_file in "$src_dir"/claude/agents/*.md; do
+        [ -f "$agent_file" ] || continue
+        local agent_basename
+        agent_basename="$(basename "$agent_file")"
+        printf -- '`flock-%s-%s` ' "$alias" "$agent_basename" >> "$conductor_file"
+      done
+      printf '\n' >> "$conductor_file"
+    done <<< "$chick_map"
+
+    info "generated conductor agent: $conductor_file"
+  else
+    echo "Error: conductor template not found at $LIB_DIR/flock-conductor-template.md" >&2
+    exit 1
+  fi
+
+  # Step 5: Copy flock.yaml to project root if not already there
+  if [ "$(realpath "$flock_file" 2>/dev/null)" != "$(realpath ./flock.yaml 2>/dev/null)" ]; then
+    cp "$flock_file" "./flock.yaml"
+    info "copied flock.yaml to project root"
+  fi
+
+  echo ""
+  echo "Flock is ready! Next steps:"
+  echo "  1. Run 'claude' to start the flock session"
+  echo "  2. The flock conductor will orchestrate the pipeline automatically"
+  echo ""
+}
+
+cmd_flock_auto() {
+  local flock_file="flock.yaml"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --file)
+        if [ $# -lt 2 ]; then echo "Error: --file requires a value"; exit 1; fi
+        flock_file="$2"; shift 2 ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  # Step 1: Validate
+  echo "Preflight check..."
+  echo ""
+  if ! cmd_flock_validate --file "$flock_file"; then
+    echo ""
+    echo "Fix the errors above before running the flock." >&2
+    exit 1
+  fi
+  echo ""
+
+  local nest_dir="$SHARE_DIR/nest"
+
+  # Step 2: Pre-flight interview — ask clarifying questions before autonomous execution
+  echo "┌─────────────────────────────────────────────────────────────┐"
+  echo "│  AUTONOMOUS MODE — Pre-flight Interview                     │"
+  echo "│                                                             │"
+  echo "│  Agents will run with elevated permissions.                 │"
+  echo "│  Please answer the following questions carefully.           │"
+  echo "└─────────────────────────────────────────────────────────────┘"
+  echo ""
+
+  # Extract and display execution plan for user review
+  python3 "$LIB_DIR/validate-flock.py" "$flock_file" "$nest_dir" --parse | python3 -c "
+import sys, json
+
+data = json.load(sys.stdin)
+chicks = data.get('chicks', {})
+settings = data.get('settings', {})
+timeout = settings.get('timeout', 30) if isinstance(settings, dict) else 30
+
+print('Execution plan:')
+print()
+for i, (alias, cfg) in enumerate(chicks.items(), 1):
+    if not isinstance(cfg, dict):
+        continue
+    chick = cfg.get('chick', '?')
+    prompt = cfg.get('prompt', cfg.get('prompt_file', '(none)'))
+    deps = cfg.get('depends_on', '(none)')
+    t = cfg.get('timeout', timeout)
+    print(f'  {i}. [{alias}] ({chick})')
+    p = str(prompt)
+    print(f'     Prompt: {p[:80]}...' if len(p) > 80 else f'     Prompt: {p}')
+    print(f'     Depends on: {deps}')
+    print(f'     Timeout: {t} min')
+    print()
+
+print(f'Global continue_on_failure: {settings.get(\"continue_on_failure\", False)}')
+print(f'Global timeout: {timeout} min')
+"
+  echo ""
+
+  # Ask for confirmation
+  printf "Do you approve this execution plan? [y/N] "
+  read -r confirm
+  if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+    echo "Aborted."
+    exit 0
+  fi
+  echo ""
+
+  # Step 3: Set up the flock (reuse cmd_flock_run setup)
+  cmd_flock_run --file "$flock_file"
+
+  echo ""
+  echo "Auto mode setup complete."
+  echo "To run autonomously, launch claude with the conductor agent:"
+  echo "  claude --agent-file .claude/agents/flock-conductor.md --dangerously-skip-permissions"
+  echo ""
+  echo "Logs will be written to .flock/logs/"
+  mkdir -p ".flock/logs"
+}
+
+cmd_flock_clean() {
+  echo "Cleaning up flock temp files..."
+  echo ""
+
+  # Remove namespaced flock agent files
+  local count=0
+  for f in .claude/agents/flock-*.md; do
+    [ -f "$f" ] || continue
+    rm "$f"
+    info "removed $f"
+    count=$((count + 1))
+  done
+
+  # Remove .flock/ working directory
+  if [ -d ".flock" ]; then
+    rm -rf ".flock"
+    info "removed .flock/"
+    count=$((count + 1))
+  fi
+
+  if [ "$count" -eq 0 ]; then
+    echo "  Nothing to clean up."
+  fi
+  echo ""
+  echo "Done. flock.yaml and chick outputs (e.g., brainstorm-output.md) are preserved."
+}
+
+cmd_flock() {
+  case "${1:-run}" in
+    run)       shift; cmd_flock_run "$@" ;;
+    --auto)    shift; cmd_flock_auto "$@" ;;
+    validate)  shift; cmd_flock_validate "$@" ;;
+    init)      shift; cmd_flock_init "$@" ;;
+    clean)     shift; cmd_flock_clean "$@" ;;
+    help|--help|-h) flock_usage ;;
+    *)         echo "Unknown flock command: $1"; flock_usage; exit 1 ;;
+  esac
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 case "${1:-help}" in
   hatch)      shift; cmd_hatch "$@" ;;
   nest)       cmd_nest ;;
+  flock)      shift; cmd_flock "$@" ;;
   --chick)
     if [ $# -lt 2 ]; then
       echo "Error: --chick requires a value"
