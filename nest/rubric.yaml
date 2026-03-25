@@ -105,22 +105,24 @@ features:
 
       # Pure shell orchestration — no agent spawned for pipeline coordination itself.
       # Cost is entirely determined by the chicks it runs, not flock overhead.
-      # The flock chick (init) is overkill (does it need multiple agents to create a yaml file?), 
-      # and does not begin the workflow — user is forced to enter unnecessary prompts
+      # The flock chick (init) is overkill (does it need multiple agents to create a yaml file?),
+      # and does not begin the workflow — user is forced to enter unnecessary prompts.
       efficiency: 5
 
-      # harnest flock --help and README cover all subcommands, flags, and flock.yaml
-      # format with a complete example. Validate error messages are descriptive.
-      # Autonomous mode behaviour and temp-file cleanup are documented.
-      documentation: 8
+      # Docs cover subcommands, flags, and flock.yaml format with examples. However,
+      # the critical gap is that "data flow between chicks" is handwaved — there is no
+      # formal input/output contract specification. Users are left guessing how one
+      # chick's output becomes the next chick's input beyond "shared working directory".
+      documentation: 7
 
-      # Core interoperability primitive — the entire point is chaining chicks.
-      # Output of each chick feeds the next via shared working directory.
-      # Explicit dependency graph ensures correct execution order.
-      interoperability: 9
+      # Core interoperability primitive, but overstated. Chicks share a working directory
+      # and have depends_on ordering, but there are no typed contracts between steps.
+      # If chick A produces X but chick B expects Y, nothing catches that mismatch.
+      # No semantic validation of inter-chick compatibility — just execution order.
+      interoperability: 8
 
-      # Central to the harnest value proposition. Any multi-chick workflow depends on it.
-      # Adoption grows with the chick catalogue.
+      # Small open-source project. No evidence of external adoption. Central to the
+      # harnest value proposition in theory, but adoption is bounded by the tiny user base.
       usage: null  # update with real data
 
       # Execution side delivers clear value — zero manual chaining once flock.yaml exists.
@@ -134,58 +136,78 @@ chicks:
       Structured software development team — architect plans, sr/jr engineers implement
       in parallel worktrees, test engineer validates before merge.
     scores:
-      # Comprehensive workflow with worktree isolation, review loops, and test gating.
-      # All four agents coordinate correctly. Degrades gracefully without MCP tools.
-      functionality: 8
+      # Works on happy-path scoped tasks, but LLM "review" is not real review — it
+      # reshuffles context and creates false confidence. Sr Engineer is a sequential
+      # bottleneck reviewing all jr work. Worktrees solve file conflicts but not semantic
+      # coordination. No error recovery if a worktree becomes corrupted. No explicit
+      # escalation workflow when max_review_cycles is hit despite docs implying one.
+      functionality: 5
 
-      # Opus architect + sonnet sr/test + 2x sonnet jr = 5 agents. Expensive for large tasks,
-      # but model choices match cognitive load well. Worktrees prevent redundant retries.
-      efficiency: 6
+      # 5 agents (opus architect + sonnet sr/test + 2x sonnet jr) is expensive. A skilled
+      # developer with a single strong sonnet session would often move faster and cheaper
+      # than managing five agents and fixing their misunderstandings. Opus for architecture
+      # is defensible in theory but the coordination overhead negates the savings.
+      efficiency: 4
 
-      # Thorough README with workflow, config table, tool setup, and limitations.
-      # CLAUDE.md is detailed and accurate. Slightly verbose in places.
-      documentation: 8
+      # README is thorough with workflow, config table, tool setup, and limitations.
+      # CLAUDE.md is detailed. However, docs imply a level of reliability ("validates
+      # before merge", "signs off") that the LLM review agents cannot actually deliver.
+      # Slightly verbose — could be tighter.
+      documentation: 7
 
-      # Produces a git branch per task — clean, consumable by downstream chicks.
-      # Worktree model means output is always on a named branch. Well-suited to pipelines.
-      interoperability: 7
+      # Produces a git branch per task, which is clean. But worktree model means output
+      # is on a branch that may have unresolved semantic issues from weak LLM review.
+      # No formal output contract for downstream chicks to rely on.
+      interoperability: 5
 
-      # Flagship chick; most discoverable. Likely the first chick most users try.
+      # Small open-source project. Flagship chick but no evidence of external adoption
+      # beyond initial experiments. Likely tried by a handful of early users.
       usage: null  # update with real data
 
-      # Replaces a complex multi-day dev workflow with a single hatch. Worktree isolation and
-      # test gating mean output often exceeds a junior solo dev's output quality. Cost is high
-      # but proportionate to the task size — users feel the delta clearly.
-      value: 8
+      # The promise is ambitious — replace a multi-day dev workflow with a single hatch.
+      # Reality: a skilled developer will often move faster solo than managing five agents.
+      # Output quality is unpredictable. Token cost is high and not always proportionate.
+      # Marginal value for complex tasks; moderate value for simple, scoped work.
+      value: 4
 
   webpage:
     description: >
       Single-page React Vite TypeScript website builder — strategist interviews the user,
       artist generates images, builder constructs the site, UX tester signs off.
     scores:
-      # End-to-end flow is well-defined. Nano Banana fallback (CSS gradients) is explicit.
-      # Playwright fallback (static code review) is also documented.
-      functionality: 8
+      # One of the more defensible chicks — narrow deliverable, visible output. But "UX
+      # tester signs off" is mostly theater unless Playwright is configured and running;
+      # otherwise it devolves into static code vibes. No coordination mechanism for how
+      # builder watches for artist's assets — README says "integrates images when available"
+      # but the handoff is aspirational, not implemented. Nano Banana credentials are
+      # complicated (Vertex AI SA or Gemini key) and fallback to CSS gradients degrades
+      # the experience significantly.
+      functionality: 6
 
-      # Opus strategist is expensive for an interview step. Sonnet everywhere else is appropriate.
-      # No worktrees keeps coordination overhead low.
-      efficiency: 7
+      # Opus strategist for an interview step is expensive and unjustified — sonnet can
+      # conduct a brief user interview. No worktrees keeps overhead low, but the overall
+      # cost is still higher than it needs to be for a single-page site.
+      efficiency: 5
 
-      # README covers all env vars, both auth methods for Nano Banana, fallbacks, and
-      # output format. Workflow diagram is accurate. Among the most thorough READMEs.
-      documentation: 9
+      # README covers env vars, auth methods, fallbacks, and output format well. Among the
+      # most thorough READMEs. However, the docs imply builder/artist coordination that
+      # doesn't have a real mechanism behind it. Slightly aspirational.
+      documentation: 8
 
-      # Output is a standard React Vite project — easy for a downstream chick to build on.
-      # No worktrees means no branch artifact; pipeline must consume the working directory.
-      interoperability: 6
+      # Output is a standard React Vite project — easy for downstream consumption. But
+      # no branch artifact and no formal output contract. Pipeline must consume the
+      # working directory directly, which is fragile for chaining.
+      interoperability: 5
 
-      # Produces a tangible, deployable artifact users can show immediately.
+      # Produces a tangible, deployable artifact which is appealing for demos. But small
+      # project with no evidence of sustained external adoption.
       usage: null  # update with real data
 
-      # Interview is short; output is a complete, deployable site with AI-generated imagery.
-      # The gap between user effort (a brief conversation) and output (a live-ready product)
-      # is large — one of the highest value-per-prompt ratios in the catalogue.
-      value: 9
+      # Decent value for simple marketing pages. The gap between user effort and output is
+      # real but not as large as claimed — a skilled dev with a Vite template and an image
+      # generator can match this in similar time. Value drops sharply if Nano Banana is
+      # unavailable (CSS gradient fallback is not a "live-ready product").
+      value: 6
 
   brainstorm:
     description: >
@@ -193,26 +215,30 @@ chicks:
       generate ideas in parallel (provocateur routes to Gemini via CCR), synthesizer
       produces a prioritised output document.
     scores:
-      # Core workflow is sound. CCR is recommended but fallback to Claude models is functional.
-      # Gemini routing adds cross-model diversity but introduces external dependency.
-      # Perhaps there is opportunity for the output of the synthesizer to be distilled for other
-      # chicks that may consume it.
+      # Core workflow is sound. Ideation tolerates LLM slop better than coding, so the
+      # multi-agent approach is less risky here. But without CCR, the "provocateur falls
+      # back to Claude haiku" which is a much weaker model — the dual-angle creative
+      # diversity that justifies the architecture largely evaporates. CLAUDE.md downplays
+      # this: "fully functional either way" is misleading when haiku != Gemini quality.
       functionality: 6
 
-      # Designed to route through Gemini (free tier) via CCR, offloading cost from Claude.
-      # Without CCR, opus facilitator + 3x sonnet/haiku is moderate spend. CCR setup is
-      # a one-time cost that pays dividends for repeated use.
-      efficiency: 4
+      # Opus facilitator + two idea generators + synthesizer is expensive for something a
+      # single well-crafted prompt session can often produce almost as well. The CCR/Gemini
+      # cost offload helps, but the setup toil and external dependency undermine the ROI.
+      efficiency: 3
 
       # README covers CCR install, Gemini API key, config JSON, and fallback behaviour.
-      # Slightly complex prerequisites section; otherwise concise and well-structured.
-      documentation: 8
+      # Prerequisites section is complex. Fallback quality degradation is downplayed —
+      # docs should be more honest about haiku vs. Gemini creative output gap.
+      documentation: 7
 
-      # Output is a single brainstorm-output.md — clear artifact for a downstream chick
-      # to consume as a brief or input context. Minimal working-directory side effects.
-      interoperability: 6
+      # brainstorm-output.md is a clear artifact, but it's human-readable prose, not a
+      # stable machine contract. A downstream chick consuming it must parse freeform
+      # text with no guaranteed structure. Interop is implicit at best.
+      interoperability: 4
 
-      # Niche use case; CCR prerequisite is a barrier. Lower adoption than output-focused chicks.
+      # Niche use case with a high barrier (CCR + Gemini API key). No evidence of
+      # adoption beyond the author. Experimental.
       usage: null  # update with real data
 
       # CCR setup and Gemini API key are real upfront toil. Once past that, the output is a
@@ -225,29 +251,38 @@ chicks:
       QA and dogfooding chick — validator runs structural checkpoints against target chicks,
       observer monitors OTel telemetry in parallel, both contribute to a pass/fail report.
     scores:
-      # Structural validation is solid. OTel path requires Jaeger or Datadog setup;
-      # falls back gracefully with "Telemetry unavailable". Covers 6 checkpoints per chick.
-      functionality: 7
+      # The most overclaimed chick in spirit. "Dogfood other chicks" implies actually running
+      # them, but chicks are never hatched or executed — only structural linting happens.
+      # 6 checkpoints (file presence, YAML schema, frontmatter, CLAUDE.md structure, naming,
+      # cross-references) are purely structural. They cannot tell you whether a chick actually
+      # produces good outcomes. OTel observer is useless without Jaeger/Datadog setup, and
+      # "Telemetry unavailable" fallback defeats the purpose of having the observer at all.
+      # "Anomaly detection" is vague — no defined thresholds or criteria.
+      functionality: 4
 
-      # Two agents: sonnet validator + haiku observer. Lean model choices for a QA workload.
-      # Haiku for telemetry monitoring is a good cost decision.
-      efficiency: 8
+      # Two agents with lean model choices — this is genuinely the right call. Haiku for
+      # observer is appropriate. But the observer is often doing nothing (telemetry unavailable),
+      # making it wasted cost in the common case.
+      efficiency: 6
 
-      # README and CLAUDE.md are detailed. Docker Jaeger command, Datadog env vars,
-      # and fallback behaviour are all explicit. Report format is well-described.
+      # README and CLAUDE.md are detailed with Docker commands and env vars. Report format
+      # is well-described. The documentation is honest about what it does, even if the
+      # description ("dogfood other chicks") oversells the structural-only validation.
       documentation: 8
 
-      # Internal QA tooling. Not designed to sit in a user-facing flock pipeline;
-      # typically used standalone to validate other chicks before release.
-      interoperability: 4
+      # Internal QA tooling. Not designed for pipelines. Produces a report file but it's
+      # not a stable contract for downstream consumption. Chaining is impractical.
+      interoperability: 3
 
-      # Internal use only. Adoption is tied to the release cadence of the harnest project.
+      # Internal use only. No external users. Adoption is limited to the single maintainer's
+      # release cadence. Experimental at best.
       usage: null  # update with real data
 
-      # High value within its niche: replaces manual chick auditing with a structured
-      # pass/fail report. Jaeger setup is one-time toil; subsequent runs are low-friction.
-      # Value is narrow but near-complete within that scope.
-      value: 7
+      # Structural linting is something a shell script with find + grep could do in seconds.
+      # Using two LLM agents for file-presence checks and YAML validation is overkill.
+      # The pass/fail report adds marginal value over manual inspection. OTel monitoring
+      # is genuinely useful when configured, but rarely is.
+      value: 3
 
   chick:
     description: >
@@ -255,59 +290,80 @@ chicks:
       user and writes a design brief, builder scaffolds the chick, reviewer signs off on
       convention compliance.
     scores:
-      # Workflow is well-designed. Parallel research + synthesis + review loop covers
-      # the full creation lifecycle. Convention checklist in reviewer is a strong quality gate.
-      functionality: 8
+      # Meta-generation is where LLMs compound their own mistakes. Two haiku researchers
+      # feeding opus synthesizer feeding sonnet builder feeding sonnet reviewer is elaborate
+      # ceremony for generating prompt scaffolding. The "convention checklist" reviewer
+      # references is never actually specified — it's implicit knowledge, not a codified
+      # gate. Builder "studies reference chicks" but which patterns to adopt is undefined.
+      # Can probably create convention-shaped folders, but output needs heavy human
+      # intervention to produce genuinely strong workflows.
+      functionality: 4
 
-      # Haiku for researchers (fast, cheap web search), opus for synthesis (reasoning-heavy),
-      # sonnet for builder and reviewer. Model choices are well-calibrated.
-      efficiency: 7
+      # Haiku for researchers is cheap, but opus for synthesis is expensive for what is
+      # essentially "interview the user and write a brief". Four agents total for
+      # scaffolding a directory with 3-4 files is overengineered. A single sonnet session
+      # with a good template would accomplish the same.
+      efficiency: 4
 
-      # README is comprehensive: roles, workflow diagram, config, supplementary tools,
-      # output structure, and run-from-repo-root caveat. CLAUDE.md mirrors accurately.
-      documentation: 9
+      # README is comprehensive with roles, workflow diagram, config, and supplementary
+      # tools. But it references a "convention checklist" that doesn't exist in the docs.
+      # "Builder studies reference chicks" without specifying which patterns to learn is
+      # a gap. Documentation is detailed but partly aspirational.
+      documentation: 7
 
       # Meta tooling — produces a new chick directory, not a consumable artifact for
       # downstream chicks. Intended to be run standalone before a chick enters a pipeline.
       interoperability: 3
 
-      # Used whenever a new chick is created. Adoption is bounded by the project's growth rate.
+      # Used whenever a new chick is created, which is rarely. Adoption bounded by the
+      # project's slow growth rate. No external contributors creating chicks.
       usage: null  # update with real data
 
-      # Scaffolding a convention-compliant chick from scratch is tedious; this chick eliminates
-      # that toil entirely. Research + interview + review loop means output is ready to ship,
-      # not just a skeleton. Strong value for contributors who know what they want to build.
-      value: 8
+      # The scaffolding task is real but modest — creating 3-4 convention-compliant files
+      # is not that tedious for someone who knows the conventions. The four-agent ceremony
+      # adds overhead that often exceeds the manual effort. Output is a skeleton that still
+      # needs substantial human refinement to become a genuinely useful chick.
+      value: 3
 
   flock:
     description: >
       Meta pipeline creator — interviewer discovers available chicks and interviews the user,
       composer generates a valid flock.yaml ready for execution.
     scores:
-      # Produces a syntactically valid flock.yaml with dependency validation and circular
-      # dependency detection. Simple two-agent workflow with clear handoff.
-      functionality: 8
+      # Produces syntactically valid flock.yaml with dependency and circular-dependency
+      # checks. But overstates understanding of data flow — most chicks don't expose
+      # formal input/output contracts, so the "pipeline design" is just ordering, not
+      # semantic wiring. Interviewer "asks about per-chick prompts" without automated
+      # discovery of what prompts each chick expects. README example references chicks
+      # like "researcher" and "architect" that don't appear to be real shipped chicks,
+      # which undermines trust in the output.
+      functionality: 5
 
-      # Opus interviewer is appropriate for the design-heavy interview step.
-      # Sonnet composer for config generation is correct. Lean overall.
-      efficiency: 7
+      # Opus interviewer for generating a YAML config file is unjustified. This is not
+      # a reasoning-heavy task — sonnet can conduct a brief interview and write YAML.
+      # Two agents for a task that a single session could handle is overengineered.
+      efficiency: 3
 
-      # README explains flock.yaml format with a complete example, workflow steps,
-      # and limitations. Concise and focused. CLAUDE.md is accurate.
-      documentation: 8
+      # README explains flock.yaml format with an example, but the example references
+      # non-existent chicks. Workflow steps and limitations are covered but the critical
+      # gap — how data actually flows between chicks — is handwaved. Not as focused
+      # or accurate as it appears at first glance.
+      documentation: 6
 
-      # By definition, this chick helps users build interoperable pipelines.
-      # It is itself a standalone tool — not typically embedded in a pipeline.
+      # Helps users build pipelines but is itself standalone. The generated flock.yaml
+      # has no semantic validation — it won't catch mismatches between chick outputs
+      # and inputs. Useful starting point but not a reliable pipeline design tool.
       interoperability: 4
 
-      # Utility chick; used whenever a new flock pipeline is designed. Growing importance
-      # as the chick catalogue expands.
+      # Utility chick used when designing new pipelines, which is rarely. No evidence
+      # of external usage. The chick catalogue is too small to drive frequent use.
       usage: null  # update with real data
 
-      # Writing flock.yaml by hand requires knowing chick names, dependency syntax, and
-      # ordering rules. This chick handles all of that from a brief interview. Low toil,
-      # clear output, immediate payoff for new pipeline authors.
-      value: 7
+      # Writing flock.yaml by hand is simple for anyone who reads the docs — it's just
+      # a list of chick names with depends_on fields. The opus interview adds cost and
+      # ceremony that exceeds the manual effort for most pipelines. Moderate value only
+      # for users unfamiliar with the format.
+      value: 4
 
   webgame:
     description: >
@@ -315,32 +371,41 @@ chicks:
       builder implements the full playable game with GitHub Actions deployment,
       playtester reviews for bugs and GDD conformance.
     scores:
-      # Produces a deployable, self-contained game directory. Tech stack selection logic
-      # (vanilla / vite-vanilla / vite-phaser / vite-three) is well-reasoned.
-      # GitHub Pages CI is a strong value-add. Playtester review loop is effective.
-      functionality: 8
+      # Harder than webpage but pitched with similar confidence. "Implements the full
+      # playable game" is a big promise for a single sonnet builder — games have complex
+      # state management, physics, input handling, and rendering that LLMs struggle with.
+      # Playtester is a weak review agent unless Playwright is actually wired up with
+      # real browser testing; otherwise it's static code vibes checking against a GDD.
+      # "GDD conformance" is vague — no operationalized acceptance criteria.
+      # For trivial games this may help; for anything beyond that, manual dev is safer.
+      functionality: 4
 
-      # Opus for game designer (reasoning-heavy), sonnet for builder and playtester.
-      # Optional Playwright adds cost but is not required. Good cost discipline.
-      efficiency: 7
+      # Opus for game designer is expensive for an interview + tech stack selection step
+      # that sonnet could handle. Three agents total is moderate but the cost is not
+      # justified by the output quality for non-trivial games.
+      efficiency: 4
 
-      # README covers all four tech stacks, deployment steps, optional Playwright,
-      # output structure, and limitations clearly. Tech stack table is especially useful.
-      documentation: 8
+      # README covers tech stacks, deployment, Playwright, and output structure clearly.
+      # Tech stack table is useful. But "full playable game" and "GDD conformance" lack
+      # operationalized definitions. What counts as complete? What format is playtester
+      # feedback? These gaps matter when the output disappoints.
+      documentation: 7
 
-      # Produces a self-contained game directory — a natural terminal step in a pipeline
-      # (e.g., brainstorm → webgame). Output is deterministic but not easily consumed
-      # by further automated chicks.
-      interoperability: 5
+      # Self-contained game directory is a natural terminal step. But output is not easily
+      # consumed by further chicks — it's an end product, not a pipeline artifact.
+      # No formal output contract.
+      interoperability: 4
 
-      # High appeal due to tangible, shareable output. Likely among the more demo-friendly
-      # chicks. Adoption depends on user interest in game creation.
+      # Demo-friendly but niche. No evidence of external adoption. Game creation is a
+      # fun demo category but not a recurring need for most users.
       usage: null  # update with real data
 
-      # From a short interview the user gets a playable game with GitHub Actions deployment —
-      # a result that would normally take days of manual work. Tech stack selection and GDD
-      # conformance checks mean output quality is high and surprises are rare.
-      value: 9
+      # For trivial games (clicker, snake), the interview-to-game pipeline delivers real
+      # value. But the promise of "a result that would normally take days" is inflated —
+      # a skilled dev with a game template can match trivial game output faster and with
+      # more control. For non-trivial games, the LLM builder will produce buggy output
+      # that requires significant manual fixing, eroding the time savings entirely.
+      value: 4
 
   improver:
     description: >
@@ -349,25 +414,38 @@ chicks:
       reviews critically and adjusts score deltas; shipper updates rubric.yaml and
       submits a PR.
     scores:
-      # Sequential four-agent workflow is well-defined. Revision cycle is bounded (one pass).
-      # Category randomisation, score-cap enforcement, and version bump rules are explicit.
-      functionality: 7
+      # The least convincing chick. Randomly selecting improvement categories, letting
+      # LLMs change the repo, then having other LLMs "validate" and open PRs is exactly
+      # how you generate plausible-but-middling churn. Random category selection gives
+      # equal probability to "improve documentation" vs "fix critical bug" — no weighting
+      # by impact. One revision cycle can mask issues: if validator reduces scope too much,
+      # implementer ships half-finished work. No post-PR validation — the PR might fail CI.
+      # No serious maintainer would trust unreviewed LLM-generated PRs to their repo.
+      functionality: 3
 
-      # Opus for reasoning-heavy assessment, sonnet for implementation, validation, and shipping.
-      # No MCP tools required. Lean for a four-agent pipeline.
-      efficiency: 7
+      # Four agents (opus assessor + 3x sonnet) for generating a single PR is expensive.
+      # High token cost, high repo risk, weak real QA. The opus assessor reads the entire
+      # codebase to pick a random improvement target — expensive for what could be a
+      # simple weighted random selection from a prioritized backlog.
+      efficiency: 2
 
-      # README covers all prerequisites, workflow, output, categories, and limitations.
-      # CLAUDE.md is detailed and accurate. Version bump and rubric cap rules are explicit.
-      documentation: 8
+      # README covers prerequisites, workflow, output, categories, and limitations well.
+      # CLAUDE.md is detailed. Version bump and rubric cap rules are explicit. The docs
+      # are honest about what it does, which is the strongest aspect of this chick.
+      documentation: 7
 
-      # Meta tooling — produces a PR, not a consumable artifact for downstream chicks.
-      # Intended to be run standalone against the harnest repo.
-      interoperability: 3
+      # Meta tooling producing PRs — not a pipeline artifact. Cannot be chained.
+      # Mutates the repo directly, which is a liability in any pipeline context.
+      interoperability: 2
 
-      # Adoption is tied to the project's improvement cadence.
+      # Internal use only by the project maintainer. No external users would run this
+      # against their own repos. Purely experimental.
       usage: null  # update with real data
 
-      # Turns an open-ended "improve harnest" prompt into a scoped, reviewed, shipped PR.
-      # Random category selection prevents local optima. Validator keeps quality honest.
-      value: 8
+      # The fundamental question: does letting LLMs randomly improve your repo actually
+      # save time? The answer is almost always no. A maintainer reviewing the PR still
+      # needs to understand every change, test it, and often fix it — effort that exceeds
+      # just making the improvement manually with intent. Random category selection means
+      # the improvement is often not the most impactful thing to work on. High token cost
+      # for low-confidence output. Negative value for serious projects.
+      value: 2
