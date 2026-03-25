@@ -98,9 +98,8 @@ features:
       and orchestrates sequential or autonomous multi-chick runs with clean temp-file
       lifecycle management.
     scores:
-      # validate, init, run, --auto, and clean all work end-to-end. Dependency ordering
-      # and circular-dependency detection are solid. Recent fixes address set -u crash
-      # and looping bug. Interactive and autonomous modes both functional.
+      # harnest flock init should launch a claude session in addition to hatching, instead it prompts the user
+      # this feature needs a lot of TLC to be considered usable and not just functional
       functionality: 1
 
       # Pure shell orchestration — no agent spawned for pipeline coordination itself.
