@@ -341,3 +341,33 @@ chicks:
       # a result that would normally take days of manual work. Tech stack selection and GDD
       # conformance checks mean output quality is high and surprises are rare.
       value: 9
+
+  improver:
+    description: >
+      Self-improvement engine — assessor randomly selects a rubric item, new feature,
+      or tech debt target; implementer makes the change on a patch/ branch; validator
+      reviews critically and adjusts score deltas; shipper updates rubric.yaml and
+      submits a PR.
+    scores:
+      # Sequential four-agent workflow is well-defined. Revision cycle is bounded (one pass).
+      # Category randomisation, score-cap enforcement, and version bump rules are explicit.
+      functionality: 7
+
+      # Opus for reasoning-heavy assessment, sonnet for implementation, validation, and shipping.
+      # No MCP tools required. Lean for a four-agent pipeline.
+      efficiency: 7
+
+      # README covers all prerequisites, workflow, output, categories, and limitations.
+      # CLAUDE.md is detailed and accurate. Version bump and rubric cap rules are explicit.
+      documentation: 8
+
+      # Meta tooling — produces a PR, not a consumable artifact for downstream chicks.
+      # Intended to be run standalone against the harnest repo.
+      interoperability: 3
+
+      # Adoption is tied to the project's improvement cadence.
+      usage: null  # update with real data
+
+      # Turns an open-ended "improve harnest" prompt into a scoped, reviewed, shipped PR.
+      # Random category selection prevents local optima. Validator keeps quality honest.
+      value: 8
