@@ -109,13 +109,25 @@ The global default is stored in `~/.config/harnest/config` and used by `harnest 
 
 ## Available Chicks
 
+Chicks are organized into **public** (user-facing project workflows) and **internal** (harnest development and meta-tooling).
+
+### Public
+
 | Chick | Description |
 |-------|-------------|
-| [`fullstack`](nest/fullstack/) | Architect + Sr Engineer + Jr Engineers + Test Engineer. Plan → implement → review → test workflow. |
-| [`webpage`](nest/webpage/) | Strategist + Artist + Builder + UX Tester. Interview → generate assets → build → validate workflow for single-page React Vite TypeScript websites. |
-| [`chick`](nest/chick/) | Researcher + Synthesizer + Builder + Reviewer. Research a concept → interview user → scaffold a new chick → review for conventions. Meta chick that creates new chicks. |
-| [`brainstorm`](nest/brainstorm/) | Facilitator + Explorer + Provocateur (Gemini) + Synthesizer. Frame a challenge → generate ideas in parallel (structured + unconventional) → synthesize into actionable output. Requires [claude-code-router](https://github.com/musistudio/claude-code-router). |
-| [`canary`](nest/canary/) | Validator + Observer. Dogfood other chicks end-to-end — validate setup, workflow execution, and clean termination with Claude Code OTel observability. Supports local Jaeger or Datadog. |
+| [`fullstack`](nest/public/fullstack/) | Architect + Sr Engineer + Jr Engineers + Test Engineer. Plan → implement → review → test workflow. |
+| [`webpage`](nest/public/webpage/) | Strategist + Artist + Builder + UX Tester. Interview → generate assets → build → validate workflow for single-page React Vite TypeScript websites. |
+| [`webgame`](nest/public/webgame/) | Game Designer + Builder + Playtester. Design → build → playtest workflow for web games. |
+| [`chick`](nest/public/chick/) | Researcher + Synthesizer + Builder + Reviewer. Research a concept → interview user → scaffold a new chick → review for conventions. Meta chick that creates new chicks. |
+| [`brainstorm`](nest/public/brainstorm/) | Facilitator + Explorer + Provocateur (Gemini) + Synthesizer. Frame a challenge → generate ideas in parallel (structured + unconventional) → synthesize into actionable output. Requires [claude-code-router](https://github.com/musistudio/claude-code-router). |
+
+### Internal
+
+| Chick | Description |
+|-------|-------------|
+| [`canary`](nest/internal/canary/) | Validator + Observer. Dogfood other chicks end-to-end — validate setup, workflow execution, and clean termination with Claude Code OTel observability. Supports local Jaeger or Datadog. |
+| [`flock`](nest/internal/flock/) | Interviewer + Composer. Meta chick for generating flock.yaml pipeline definitions interactively. |
+| [`improver`](nest/internal/improver/) | Assessor + Implementer + Validator + Shipper. Assess, improve, validate, and ship enhancements to existing chicks. |
 
 See the [nest/](nest/) directory for full documentation on each chick.
 

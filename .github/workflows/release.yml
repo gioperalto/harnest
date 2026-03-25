@@ -88,7 +88,9 @@ jobs:
 
             def install
               bin.install "bin/harnest"
-              (share/"harnest/nest").install Dir["nest/*"]
+              (share/"harnest/nest/public").install Dir["nest/public/*"]
+              (share/"harnest/nest/internal").install Dir["nest/internal/*"]
+              (share/"harnest/nest").install "nest/rubric.yaml" if File.exist?("nest/rubric.yaml")
               (share/"harnest/lib").install Dir["lib/*"]
             end
           end

@@ -232,9 +232,12 @@ def get_available_chicks(nest_dir=None, registry_file=None):
             reg = _json.load(f)
         available = set(reg.get("chicks", {}).keys())
     elif nest_dir and os.path.isdir(nest_dir):
-        for entry in os.listdir(nest_dir):
-            if os.path.isdir(os.path.join(nest_dir, entry)):
-                available.add(entry)
+        for subdir in ("public", "internal"):
+            subdir_path = os.path.join(nest_dir, subdir)
+            if os.path.isdir(subdir_path):
+                for entry in os.listdir(subdir_path):
+                    if os.path.isdir(os.path.join(subdir_path, entry)):
+                        available.add(entry)
     return available
 
 
