@@ -22,6 +22,11 @@ Harnest speaks in birds.
 | `harnest hatch --chick fullstack` | Hatch with a specific chick (one-time) |
 | `harnest --chick fullstack` | Set the global default chick |
 | `harnest nest` | List available chicks |
+| `harnest flock [run]` | Run a flock pipeline (interactive) |
+| `harnest flock --auto` | Run a flock pipeline autonomously |
+| `harnest flock validate` | Validate a flock.yaml file |
+| `harnest flock init` | Generate a flock.yaml interactively |
+| `harnest flock clean` | Remove temp flock agent files |
 | `harnest version` | Print version |
 | `harnest help` | Show help |
 
@@ -101,6 +106,58 @@ The global default is stored in `~/.config/harnest/config` and used by `harnest 
 | [`canary`](nest/canary/) | Validator + Observer. Dogfood other chicks end-to-end — validate setup, workflow execution, and clean termination with Claude Code OTel observability. Supports local Jaeger or Datadog. |
 
 See the [nest/](nest/) directory for full documentation on each chick.
+
+## Flock — Multi-Chick Pipelines
+
+A flock chains multiple chicks into a sequential pipeline — like Docker Compose, but for AI workflows. Define the pipeline in a `flock.yaml` file and run it with a single command.
+
+**Create a pipeline interactively:**
+```bash
+harnest flock init
+```
+This hatches the [`flock`](nest/flock/) meta-chick, which interviews you about your workflow and generates a `flock.yaml`.
+
+**Example `flock.yaml`:**
+```yaml
+chicks:
+  research:
+    chick: brainstorm
+    prompt: "Explore approaches to real-time data sync"
+
+  build:
+    chick: fullstack
+    prompt: "Implement the chosen sync approach"
+    depends_on:
+      - research
+
+settings:
+  continue_on_failure: false
+  timeout: 30
+```
+
+**Run the pipeline:**
+```bash
+# Interactive mode — confirm each step
+harnest flock run
+
+# Autonomous mode — runs all steps without prompts
+harnest flock --auto
+
+# Use a custom pipeline file
+harnest flock run --file pipelines/my-flock.yaml
+```
+
+**Validate without running:**
+```bash
+harnest flock validate
+```
+
+**Clean up temp files after a run:**
+```bash
+harnest flock clean
+```
+
+Flock creates namespaced agent files (e.g., `flock-research-explorer.md`) in `.claude/agents/` and a conductor agent that orchestrates the pipeline. These are cleaned up automatically when a run ends, or manually with `flock clean`. Your `flock.yaml` and chick outputs are preserved.
 
 ## Contributing
 
